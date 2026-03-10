@@ -1,0 +1,11 @@
+{
+  "searchTerms": [
+    "Senior Angular Developer",
+    "Senior Frontend Developer TypeScript",
+    "Angular Senior Frontend"
+  ],
+  "minSalary": 50000,
+  "remoteOnly": true,
+  "includeKeywords": ["angular", "vue", "typescript", "rxjs", "frontend", "front-end", "senior", "lead", "architect", "react", "javascript"],
+  "excludeKeywords": ["junior", "intern", "only php", "wordpress developer", "java developer", ".net developer only", "python", "backend"]
+}
