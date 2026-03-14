@@ -5,10 +5,10 @@ import { scrapeId, scoreJob, stripHtml } from './utils.js';
 export async function scrapeRemotive() {
   const results = [];
   try {
-    const res = await fetch('https://remotive.com/api/remote-jobs');
+    const res = await fetch('https://remotive.com/api/remote-jobs?category=software-dev&limit=50');
     const data = await res.json();
 
-    for (const job of data.jobs.slice(0, 40)) {
+    for (const job of data.jobs) {
       const role = job.title;
       const company = job.company_name;
       const desc = stripHtml(job.description || '');

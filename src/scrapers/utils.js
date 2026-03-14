@@ -23,6 +23,8 @@ try {
     ],
     minSalary: 50_000,
     remoteOnly: true,
+    strongKeywords: ['angular', 'react', 'vue', 'frontend', 'front-end', 'typescript'],
+    additionalKeywords: ['rxjs', 'javascript', 'ui', 'ux', 'senior', 'lead', 'architect'],
     includeKeywords: ['angular','vue','typescript','rxjs','frontend','front-end','senior','lead','architect'],
     excludeKeywords: ['junior','intern','only php','wordpress developer','java developer','.net developer only'],
   };
@@ -33,10 +35,52 @@ export const scrapeId = (title, company) =>
   crypto.createHash('md5').update(`${title.toLowerCase()}${company.toLowerCase()}`).digest('hex').slice(0, 10);
 
 export function scoreJob(title = '', description = '') {
-  const text = `${title} ${description}`.toLowerCase();
+  const titleLow = title.toLowerCase();
+  const descLow = description.toLowerCase();
   let score = 0;
-  for (const kw of CONFIG.includeKeywords) if (text.includes(kw)) score++;
-  for (const kw of CONFIG.excludeKeywords) if (text.includes(kw)) score -= 3;
+  let titleHasStrong = false;
+
+  // Title strong keyword match is worth more — it means the role IS frontend
+  for (const kw of CONFIG.strongKeywords) {
+    if (titleLow.includes(kw)) {
+      titleHasStrong = true;
+      score += 4;
+      break;
+    }
+  }
+
+  // Description strong keyword match (only if not already in title)
+  if (!titleHasStrong) {
+    for (const kw of CONFIG.strongKeywords) {
+      if (descLow.includes(kw)) {
+        score += 2;
+        break;
+      }
+    }
+  }
+
+  // Additional keywords in title (+2) or description (+1)
+  for (const kw of CONFIG.additionalKeywords) {
+    if (titleLow.includes(kw)) score += 2;
+    else if (descLow.includes(kw)) score += 1;
+  }
+
+  // Exclude keywords in title = hard reject
+  for (const kw of (CONFIG.excludeTitle || CONFIG.excludeKeywords)) {
+    if (titleLow.includes(kw)) return -999;
+  }
+
+  // Exclude in description only matters if there's no strong title match
+  if (!titleHasStrong) {
+    for (const kw of CONFIG.excludeKeywords) {
+      if (descLow.includes(kw)) score -= 3;
+    }
+  }
+
+  if (CONFIG.requireStrongMatch && score < 2) {
+    return -999; // No meaningful frontend signal
+  }
+
   return score;
 }
 

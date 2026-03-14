@@ -1,0 +1,34 @@
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme((
+    color: (
+      theme-type: light,
+      primary: mat.$azure-palette,
+    ),
+    typography: (
+      plain-family: 'Inter, sans-serif',
+    ),
+    density: (
+      scale: 0,
+    ),
+  ));
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background: #f5f5f5;
+}
+
+// Status badge colours
+.status-bookmarked  { background: #e3f2fd; color: #1565c0; }
+.status-applied     { background: #e8f5e9; color: #2e7d32; }
+.status-screening   { background: #fff3e0; color: #e65100; }
+.status-technical   { background: #fce4ec; color: #880e4f; }
+.status-final-round { background: #f3e5f5; color: #4a148c; }
+.status-offer       { background: #e8f5e9; color: #1b5e20; }
+.status-rejected    { background: #fafafa; color: #616161; }

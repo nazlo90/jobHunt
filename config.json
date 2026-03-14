@@ -6,6 +6,10 @@
   ],
   "minSalary": 50000,
   "remoteOnly": true,
-  "includeKeywords": ["angular", "vue", "typescript", "rxjs", "frontend", "front-end", "senior", "lead", "architect", "react", "javascript"],
-  "excludeKeywords": ["junior", "intern", "only php", "wordpress developer", "java developer", ".net developer only", "python", "backend"]
+  "strongKeywords": ["angular", "react", "vue", "frontend", "front-end", "typescript"],
+  "additionalKeywords": ["rxjs", "javascript", "ui", "ux", "senior", "lead", "architect"],
+  "excludeTitle": ["junior", "intern", "wordpress", "java developer", ".net developer", "python developer", "backend engineer", "backend developer", "ruby developer", "rails developer", "golang developer", "kotlin developer", "swift developer", "mobile developer", "ios developer", "android developer", "data engineer", "data scientist", "devops engineer", "qa engineer", "tester", "sales", "product manager", "designer", "analyst", "director", "executive", "recruiter"],
+  "excludeKeywords": ["junior", "intern", "wordpress", "java developer", ".net developer", "python developer", "backend engineer", "backend developer", "ruby developer", "rails developer", "golang developer", "kotlin developer", "mobile developer", "ios developer", "android developer", "data engineer", "data scientist", "devops engineer", "qa engineer", "sales engineer", "product manager"],
+  "requireStrongMatch": true,
+  "minScore": 2
 }

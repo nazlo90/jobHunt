@@ -22,7 +22,7 @@ export async function scrapeLinkedIn(searchTerm) {
     // Parse job cards from LinkedIn's guest API HTML
     const cards = html.match(/<li[^>]*>([\s\S]*?)<\/li>/g) || [];
 
-    for (const card of cards.slice(0, 15)) {
+    for (const card of cards.slice(0, 8)) { // Reduced from 10 to 8 for better quality
       const titleM  = card.match(/class="[^"]*base-search-card__title[^"]*"[^>]*>([^<]+)</);
       const compM   = card.match(/class="[^"]*base-search-card__subtitle[^"]*"[^>]*>\s*<[^>]*>\s*([^<]+)/);
       const linkM   = card.match(/href="([^"]*linkedin\.com\/jobs[^"]*)/);
@@ -30,12 +30,34 @@ export async function scrapeLinkedIn(searchTerm) {
 
       const role    = titleM?.[1]?.trim() || '';
       const company = compM?.[1]?.trim() || '';
-      const url     = linkM?.[1] || '';
+      const jobUrl  = linkM?.[1] || '';
       const location = locM?.[1]?.trim() || '';
 
-      if (!role || !company) continue;
+      if (!role || !company || !jobUrl) continue;
 
-      const score = scoreJob(role, '');
+      // Try to get job description for better scoring
+      let description = '';
+      try {
+        const jobRes = await fetch(jobUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+          },
+          timeout: 8000,
+        });
+        if (jobRes.ok) {
+          const jobHtml = await jobRes.text();
+          // Extract description from the job page
+          const descMatch = jobHtml.match(/<div[^>]*class="[^"]*description[^"]*"[^>]*>([\s\S]*?)<\/div>/i) ||
+                           jobHtml.match(/<meta[^>]*property="og:description"[^>]*content="([^"]*)"/i);
+          if (descMatch) {
+            description = descMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+          }
+        }
+      } catch (err) {
+        // Ignore description fetch errors
+      }
+
+      const score = scoreJob(role, description);
       if (score < 0) continue;
 
       const id = scrapeId(role, company);
@@ -45,7 +67,7 @@ export async function scrapeLinkedIn(searchTerm) {
         role,
         salary: '',
         salary_raw: 0,
-        url,
+        url: jobUrl,
         location,
         tech_stack: '',
         status: 'Bookmarked',
@@ -54,8 +76,11 @@ export async function scrapeLinkedIn(searchTerm) {
         contact: '',
         notes: '',
         source: 'linkedin',
-        description_preview: '',
+        description_preview: description.slice(0, 500),
       });
+
+      // Rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   } catch (err) {
     console.error(`  ✗ LinkedIn error: ${err.message}`);

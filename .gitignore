@@ -61,17 +61,6 @@ jspm_packages/
 .cache
 .parcel-cache
 
-# Next.js build output
-.next
-
-# Nuxt.js build / generate output
-.nuxt
-dist
-
-# Gatsby files
-.cache/
-public
-
 # Storybook build outputs
 .out
 .storybook-out
@@ -81,7 +70,6 @@ tmp/
 temp/
 
 # Editor directories and files
-.vscode/
 .idea/
 *.swp
 *.swo
@@ -96,9 +84,22 @@ temp/
 ehthumbs.db
 Thumbs.db
 
-# Dynamic data
-db/
+# Angular build cache
+apps/ui/.angular/
+
+# NestJS compiled output (TypeScript build info)
+apps/api/tsconfig.build.tsbuildinfo
+
+# Dynamic data (SQLite DB — ignore binary data files, not the directory)
+db/*.db
+db/*.db-shm
+db/*.db-wal
 
 # Other dynamic data
 *.tmp
 *.temp
+
+# AI tool runtime artifacts (downloaded skills, lock files)
+.agents/
+.kiro/
+skills-lock.json

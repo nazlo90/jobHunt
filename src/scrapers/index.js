@@ -7,3 +7,7 @@ export { scrapeRemotive } from './remotive.js';
 export { scrapeWWR } from './wwr.js';
 export { scrapeHN } from './hn.js';
 export { scrapeGreenhouse } from './greenhouse.js';
+export { scrapeHimalayas } from './himalayas.js';
+export { scrapeJobicy } from './jobicy.js';
+export { scrapeTheMuse } from './themuse.js';
+export { scrapeDOU } from './dou.js';

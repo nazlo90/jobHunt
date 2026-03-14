@@ -1,6 +1,3 @@
-// src/cv-adapter-data.js
-// Exported separately so server.js can import MASTER_CV without circular deps
-
 export const MASTER_CV = {
   name: 'Nazar Bodnar',
   title: 'Senior Frontend Developer',

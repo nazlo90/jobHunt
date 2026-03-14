@@ -2,19 +2,40 @@
 import fetch from 'node-fetch';
 import { scrapeId, scoreJob, stripHtml } from './utils.js';
 
+async function findHNHiringThread() {
+  const res = await fetch('https://hacker-news.firebaseio.com/v0/user/whoishiring.json');
+  const user = await res.json();
+  const submitted = (user.submitted || []).slice(0, 10);
+  for (const id of submitted) {
+    const itemRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
+    const item = await itemRes.json();
+    if (item?.title?.includes('Who is hiring')) return id;
+  }
+  return null;
+}
+
 export async function scrapeHN() {
   const results = [];
   try {
-    const res = await fetch('https://hacker-news.firebaseio.com/v0/item/37570037.json');
+    const threadId = await findHNHiringThread();
+    if (!threadId) return results;
+
+    const res = await fetch(`https://hacker-news.firebaseio.com/v0/item/${threadId}.json`);
     const data = await res.json();
 
-    const text = data.text || '';
+    // Fetch top-level comments — each is a direct job post
+    const kids = (data.kids || []).slice(0, 100);
+    const comments = await Promise.all(
+      kids.map(id =>
+        fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`)
+          .then(r => r.json())
+          .catch(() => null)
+      )
+    );
 
-    const posts = text.split('<p>');
-
-    for (const p of posts.slice(0, 50)) {
-      const clean = stripHtml(p);
-
+    for (const comment of comments) {
+      if (!comment?.text) continue;
+      const clean = stripHtml(comment.text);
       if (!clean.toLowerCase().includes('remote')) continue;
 
       const role = clean.slice(0, 80);
@@ -29,7 +50,7 @@ export async function scrapeHN() {
         role,
         salary: '',
         salary_raw: 0,
-        url: 'https://news.ycombinator.com/item?id=37570037',
+        url: `https://news.ycombinator.com/item?id=${threadId}`,
         location: 'Remote',
         tech_stack: '',
         status: 'Bookmarked',
