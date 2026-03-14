@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, linkedSignal, input } from '@angular/core';
+import { Component, OnInit, inject, signal, linkedSignal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +9,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { JobsStore } from '../../../core/store/jobs.store';
 import { JobsService } from '../../../core/services/jobs.service';
 import { CvService } from '../../../core/services/cv.service';
@@ -23,21 +26,22 @@ import { Job, AdaptedCv, JOB_STATUSES } from '../../../core/models/job.model';
   imports: [
     CommonModule, RouterLink, FormsModule,
     MatCardModule, MatButtonModule, MatIconModule, MatSelectModule,
-    MatInputModule, MatTabsModule, MatChipsModule, MatProgressSpinnerModule,
+    MatInputModule, MatTabsModule, MatChipsModule, MatProgressSpinnerModule, MatTooltipModule,
+    MatDatepickerModule, MatNativeDateModule,
   ],
   template: `
     <div class="job-detail">
       @if (job(); as j) {
         <div class="detail-header">
-          <button mat-icon-button routerLink="/jobs">
+          <button mat-icon-button routerLink="/jobs" class="back-btn">
             <mat-icon>arrow_back</mat-icon>
           </button>
-          <div>
+          <div class="header-titles">
             <h1>{{ j.company }}</h1>
             <p class="role">{{ j.role }}</p>
           </div>
           @if (j.url) {
-            <a mat-stroked-button [href]="j.url" target="_blank">
+            <a mat-stroked-button [href]="j.url" target="_blank" class="open-btn">
               <mat-icon>open_in_new</mat-icon> Open Job
             </a>
           }
@@ -46,41 +50,52 @@ import { Job, AdaptedCv, JOB_STATUSES } from '../../../core/models/job.model';
         <mat-tab-group>
           <mat-tab label="Details">
             <div class="tab-content">
-              <div class="field-row">
-                <label>Status</label>
-                <mat-select [(ngModel)]="editStatus" (ngModelChange)="updateField('status', $event)">
-                  @for (s of statuses; track s) {
-                    <mat-option [value]="s">{{ s }}</mat-option>
-                  }
-                </mat-select>
+              <div class="fields-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>Status</mat-label>
+                  <mat-select [(ngModel)]="editStatus" (ngModelChange)="updateField('status', $event)">
+                    @for (s of statuses; track s) {
+                      <mat-option [value]="s">{{ s }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Priority</mat-label>
+                  <mat-select [(ngModel)]="editPriority" (ngModelChange)="updateField('priority', $event)">
+                    @for (p of [1,2,3,4,5]; track p) {
+                      <mat-option [value]="p">{{ '★'.repeat(p) }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Applied Date</mat-label>
+                  <input matInput [matDatepicker]="picker" [(ngModel)]="editAppliedDateObj"
+                         (dateChange)="onAppliedDateChange($event.value)">
+                  <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                  <mat-datepicker #picker></mat-datepicker>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Contact</mat-label>
+                  <input matInput [(ngModel)]="editContact"
+                         (blur)="updateField('contact', editContact)">
+                </mat-form-field>
               </div>
-              <div class="field-row">
-                <label>Priority</label>
-                <mat-select [(ngModel)]="editPriority" (ngModelChange)="updateField('priority', $event)">
-                  @for (p of [1,2,3,4,5]; track p) {
-                    <mat-option [value]="p">{{ '★'.repeat(p) }}</mat-option>
-                  }
-                </mat-select>
+
+              <div class="info-grid">
+                <div class="info-item"><span class="info-label">Salary</span><span>{{ j.salary || '—' }}</span></div>
+                <div class="info-item"><span class="info-label">Location</span><span>{{ j.location || '—' }}</span></div>
+                <div class="info-item"><span class="info-label">Tech Stack</span><span>{{ j.techStack || '—' }}</span></div>
+                <div class="info-item"><span class="info-label">Source</span><mat-chip>{{ j.source }}</mat-chip></div>
               </div>
-              <div class="field-row"><label>Salary</label><span>{{ j.salary || '—' }}</span></div>
-              <div class="field-row"><label>Location</label><span>{{ j.location || '—' }}</span></div>
-              <div class="field-row"><label>Tech Stack</label><span>{{ j.techStack || '—' }}</span></div>
-              <div class="field-row"><label>Source</label><mat-chip>{{ j.source }}</mat-chip></div>
-              <div class="field-row">
-                <label>Applied Date</label>
-                <input matInput type="date" [(ngModel)]="editAppliedDate"
-                       (change)="updateField('appliedDate', editAppliedDate)">
-              </div>
-              <div class="field-row">
-                <label>Contact</label>
-                <input matInput [(ngModel)]="editContact"
-                       (blur)="updateField('contact', editContact)">
-              </div>
-              <div class="notes-row">
-                <label>Notes</label>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Notes</mat-label>
                 <textarea matInput rows="4" [(ngModel)]="editNotes"
                           (blur)="updateField('notes', editNotes)"></textarea>
-              </div>
+              </mat-form-field>
             </div>
           </mat-tab>
 
@@ -94,28 +109,98 @@ import { Job, AdaptedCv, JOB_STATUSES } from '../../../core/models/job.model';
               <button mat-raised-button color="primary" (click)="generateCv()"
                       [disabled]="!jobDescription || cvLoading()">
                 @if (cvLoading()) {
-                  <mat-spinner diameter="18" style="display:inline-block;margin-right:8px"></mat-spinner>Generating…
+                  <span class="btn-content"><mat-spinner diameter="18"></mat-spinner>Generating…</span>
                 } @else {
-                  <mat-icon>auto_awesome</mat-icon> Generate Adapted CV
+                  <span class="btn-content"><mat-icon>auto_awesome</mat-icon>Generate Adapted CV</span>
                 }
               </button>
 
               @if (latestCv(); as cv) {
                 <mat-card class="cv-result">
                   <mat-card-header>
-                    <mat-card-title>Relevance: {{ cv.relevanceScore }}/100</mat-card-title>
+                    <mat-card-title>
+                      <span class="score-badge" [class.score-high]="cv.relevanceScore >= 70"
+                            [class.score-mid]="cv.relevanceScore >= 50 && cv.relevanceScore < 70"
+                            [class.score-low]="cv.relevanceScore < 50">
+                        {{ cv.relevanceScore }}/100
+                      </span>
+                      Relevance Score
+                    </mat-card-title>
                   </mat-card-header>
                   <mat-card-content>
-                    <h4>Profile</h4><p>{{ cv.adaptedProfile }}</p>
-                    <h4>Missing Skills</h4>
-                    <div class="chips-row">
-                      @for (skill of cv.missingSkills; track skill) {
-                        <mat-chip color="warn">{{ skill }}</mat-chip>
-                      }
+
+                    <div class="cv-section">
+                      <h4>Adapted Profile</h4>
+                      <p>{{ cv.adaptedProfile }}</p>
                     </div>
-                    <h4>Cover Letter</h4>
-                    <p class="cover-letter">{{ cv.coverLetter }}</p>
-                    <h4>Advice</h4><p>{{ cv.advice }}</p>
+
+                    <div class="cv-section">
+                      <h4>Keywords Found</h4>
+                      <div class="chips-row">
+                        @for (kw of cv.keywordsFound; track kw) {
+                          <mat-chip class="chip-match">{{ kw }}</mat-chip>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="cv-section">
+                      <h4>Missing Skills</h4>
+                      <div class="chips-row">
+                        @for (skill of cv.missingSkills; track skill) {
+                          <mat-chip class="chip-missing">{{ skill }}</mat-chip>
+                        }
+                        @if (!cv.missingSkills.length) {
+                          <span class="none-label">None — great match!</span>
+                        }
+                      </div>
+                    </div>
+
+                    @if (cv.topExperience.length) {
+                      <div class="cv-section">
+                        <h4>Tailored Experience</h4>
+                        @for (exp of cv.topExperience; track exp.company) {
+                          <div class="exp-block">
+                            <div class="exp-header">
+                              <strong>{{ exp.role }}</strong> — {{ exp.company }}
+                              <span class="exp-period">{{ exp.period }}</span>
+                            </div>
+                            <ul>
+                              @for (b of exp.bullets; track b) {
+                                <li>{{ b }}</li>
+                              }
+                            </ul>
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    <div class="cv-section">
+                      <div class="section-header">
+                        <h4>Cover Letter</h4>
+                        <button mat-icon-button (click)="copy(cv.coverLetter)" matTooltip="Copy to clipboard">
+                          <mat-icon>content_copy</mat-icon>
+                        </button>
+                      </div>
+                      <p class="preformatted">{{ cv.coverLetter }}</p>
+                    </div>
+
+                    @if (cv.adaptedCvText) {
+                      <div class="cv-section">
+                        <div class="section-header">
+                          <h4>Full Adapted CV</h4>
+                          <button mat-icon-button (click)="copy(cv.adaptedCvText!)" matTooltip="Copy to clipboard">
+                            <mat-icon>content_copy</mat-icon>
+                          </button>
+                        </div>
+                        <pre class="cv-text">{{ cv.adaptedCvText }}</pre>
+                      </div>
+                    }
+
+                    <div class="cv-section">
+                      <h4>Advice</h4>
+                      <p>{{ cv.advice }}</p>
+                    </div>
+
                   </mat-card-content>
                 </mat-card>
               }
@@ -128,18 +213,49 @@ import { Job, AdaptedCv, JOB_STATUSES } from '../../../core/models/job.model';
     </div>
   `,
   styles: [`
-    .job-detail { max-width: 800px; }
-    .detail-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
-    h1 { margin: 0; font-size: 22px; font-weight: 600; }
-    .role { margin: 4px 0 0; color: #555; }
-    .tab-content { padding: 20px 0; display: flex; flex-direction: column; gap: 16px; }
-    .field-row { display: flex; align-items: center; gap: 16px; }
-    .field-row label { width: 120px; font-weight: 500; color: #555; flex-shrink: 0; }
-    .notes-row { display: flex; flex-direction: column; gap: 8px; }
-    .notes-row label { font-weight: 500; color: #555; }
+    :host { display: block; width: 100%; }
+    .job-detail { width: 100%; }
+    .detail-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 24px;
+      background: #fff; border-radius: 12px; padding: 16px 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .header-titles { flex: 1; }
+    .back-btn { color: #555; flex-shrink: 0; }
+    .open-btn { flex-shrink: 0; }
+    h1 { margin: 0; font-size: 20px; font-weight: 700; color: #1a1a2e; }
+    .role { margin: 2px 0 0; color: #666; font-size: 14px; }
+    .tab-content { padding: 20px 0; display: flex; flex-direction: column; gap: 4px; }
+    .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    .info-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+      background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+      padding: 16px; margin-bottom: 4px;
+    }
+    .info-item { display: flex; flex-direction: column; gap: 4px; }
+    .info-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: #999; }
+    .full-width { width: 100%; }
+    .btn-content { display: inline-flex; align-items: center; gap: 6px; }
     .cv-result { margin-top: 16px; }
+    .cv-section { margin-bottom: 20px; }
+    .cv-section h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #666; }
+    .section-header { display: flex; align-items: center; gap: 4px; }
+    .section-header h4 { margin: 0; }
     .chips-row { display: flex; gap: 8px; flex-wrap: wrap; }
-    .cover-letter { white-space: pre-wrap; font-size: 14px; line-height: 1.6; }
+    .chip-match { background: #e8f5e9 !important; color: #2e7d32 !important; }
+    .chip-missing { background: #fce4ec !important; color: #c62828 !important; }
+    .none-label { font-size: 13px; color: #888; font-style: italic; }
+    .score-badge { font-size: 18px; font-weight: 700; margin-right: 6px; }
+    .score-high { color: #2e7d32; }
+    .score-mid { color: #e65100; }
+    .score-low { color: #c62828; }
+    .exp-block { margin-bottom: 12px; }
+    .exp-header { font-size: 14px; margin-bottom: 4px; }
+    .exp-period { font-size: 12px; color: #888; margin-left: 8px; }
+    .exp-block ul { margin: 4px 0 0 18px; padding: 0; }
+    .exp-block li { font-size: 13px; line-height: 1.5; margin-bottom: 2px; }
+    .preformatted { white-space: pre-wrap; font-size: 14px; line-height: 1.6; }
+    .cv-text { white-space: pre-wrap; font-size: 12px; line-height: 1.6; font-family: monospace; background: #f5f5f5; padding: 12px; border-radius: 4px; overflow-x: auto; }
   `],
 })
 export class JobDetailComponent implements OnInit {
@@ -160,6 +276,7 @@ export class JobDetailComponent implements OnInit {
   editPriority = linkedSignal(() => this.job()?.priority ?? 3);
 
   editAppliedDate = '';
+  editAppliedDateObj: Date | null = null;
   editContact = '';
   editNotes = '';
   jobDescription = '';
@@ -168,6 +285,7 @@ export class JobDetailComponent implements OnInit {
     this.jobsSvc.getJob(Number(this.id)).subscribe((res) => {
       this.job.set(res.job);
       this.editAppliedDate = res.job.appliedDate ?? '';
+      this.editAppliedDateObj = res.job.appliedDate ? new Date(res.job.appliedDate) : null;
       this.editContact = res.job.contact ?? '';
       this.editNotes = res.job.notes ?? '';
     });
@@ -188,5 +306,16 @@ export class JobDetailComponent implements OnInit {
       next: (res) => { this.latestCv.set(res.cv); this.cvLoading.set(false); },
       error: () => this.cvLoading.set(false),
     });
+  }
+
+  onAppliedDateChange(date: Date | null) {
+    if (!date) return;
+    const str = date.toISOString().split('T')[0];
+    this.editAppliedDate = str;
+    this.updateField('appliedDate', str);
+  }
+
+  copy(text: string) {
+    navigator.clipboard.writeText(text);
   }
 }

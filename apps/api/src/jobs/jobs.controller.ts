@@ -13,8 +13,8 @@ export class JobsController {
 
   @Get()
   async findAll(@Query() query: QueryJobsDto) {
-    const jobs = await this.jobsService.findAll(query);
-    return { ok: true, jobs };
+    const { jobs, total } = await this.jobsService.findAll(query);
+    return { ok: true, jobs, total };
   }
 
   @Get('stats')

@@ -41,6 +41,13 @@ export interface JobStats {
   bySource: { source: string; count: number }[];
 }
 
+export interface TopExperienceEntry {
+  company: string;
+  period: string;
+  role: string;
+  bullets: string[];
+}
+
 export interface AdaptedCv {
   id: number;
   jobId?: number;
@@ -50,7 +57,8 @@ export interface AdaptedCv {
   keywordsFound: string[];
   missingSkills: string[];
   adaptedProfile: string;
-  topExperience: string[];
+  topExperience: TopExperienceEntry[];
+  adaptedCvText?: string;
   coverLetter: string;
   advice: string;
   createdAt: string;

@@ -37,6 +37,9 @@ export class AdaptedCv {
   @Column({ name: 'top_experience', nullable: true, type: 'text' })
   topExperience: string; // JSON array
 
+  @Column({ name: 'adapted_cv_text', nullable: true, type: 'text' })
+  adaptedCvText: string;
+
   @Column({ name: 'cover_letter', nullable: true, type: 'text' })
   coverLetter: string;
 

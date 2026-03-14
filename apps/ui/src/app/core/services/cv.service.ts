@@ -13,10 +13,19 @@ export class CvService {
     return this.http.get<{ ok: boolean; cvs: AdaptedCv[] }>(`${this.base}/cvs?job_id=${jobId}`);
   }
 
-  generate(jobId: number | null, jobDescription: string): Observable<{ ok: boolean; cv: AdaptedCv }> {
+  getMasterCv(): Observable<{ ok: boolean; masterCv: object }> {
+    return this.http.get<{ ok: boolean; masterCv: object }>(`${this.base}/cvs/master-cv`);
+  }
+
+  updateMasterCv(masterCv: object): Observable<{ ok: boolean }> {
+    return this.http.put<{ ok: boolean }>(`${this.base}/cvs/master-cv`, masterCv);
+  }
+
+  generate(jobId: number | null, jobDescription: string, masterCv?: object): Observable<{ ok: boolean; cv: AdaptedCv }> {
     return this.http.post<{ ok: boolean; cv: AdaptedCv }>(`${this.base}/cvs/generate`, {
       jobId,
       jobDescription,
+      ...(masterCv ? { masterCv } : {}),
     });
   }
 }

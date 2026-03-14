@@ -17,6 +17,11 @@ export const routes: Routes = [
       import('./features/jobs/jobs-list/jobs-list.component').then((m) => m.JobsListComponent),
   },
   {
+    path: 'jobs/new',
+    loadComponent: () =>
+      import('./features/jobs/add-job/add-job.component').then((m) => m.AddJobComponent),
+  },
+  {
     path: 'jobs/:id',
     loadComponent: () =>
       import('./features/jobs/job-detail/job-detail.component').then((m) => m.JobDetailComponent),

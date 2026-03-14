@@ -21,14 +21,22 @@ html, body {
   height: 100%;
   margin: 0;
   font-family: 'Inter', sans-serif;
-  background: #f5f5f5;
+  background: #f0f2f5;
 }
 
-// Status badge colours
+// Status badge — base + colour variants (used across multiple components)
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
 .status-bookmarked  { background: #e3f2fd; color: #1565c0; }
 .status-applied     { background: #e8f5e9; color: #2e7d32; }
 .status-screening   { background: #fff3e0; color: #e65100; }
 .status-technical   { background: #fce4ec; color: #880e4f; }
 .status-final-round { background: #f3e5f5; color: #4a148c; }
 .status-offer       { background: #e8f5e9; color: #1b5e20; }
-.status-rejected    { background: #fafafa; color: #616161; }
+.status-rejected    { background: #fafafa; color: #757575; border: 1px solid #e0e0e0; }

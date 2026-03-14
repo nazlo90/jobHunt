@@ -1,6 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,38 +10,41 @@ import { ScraperService, ScraperStatus } from '../../core/services/scraper.servi
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [
-    CommonModule, RouterLink,
-    MatCardModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule,
-  ],
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   template: `
     <div class="dashboard">
-      <h1>Dashboard</h1>
+      <div class="page-header">
+        <h1>Dashboard</h1>
+      </div>
 
       @if (store.statsLoading()) {
-        <mat-spinner diameter="40"></mat-spinner>
+        <div class="spinner-wrap"><mat-spinner diameter="40"></mat-spinner></div>
       } @else if (store.stats(); as stats) {
         <div class="stats-grid">
           <mat-card class="stat-card">
             <mat-card-content>
+              <div class="stat-icon-wrap default"><mat-icon>work_outline</mat-icon></div>
               <div class="stat-number">{{ stats.total }}</div>
               <div class="stat-label">Total Jobs</div>
             </mat-card-content>
           </mat-card>
           <mat-card class="stat-card accent">
             <mat-card-content>
+              <div class="stat-icon-wrap accent"><mat-icon>trending_up</mat-icon></div>
               <div class="stat-number">{{ store.pipeline() }}</div>
               <div class="stat-label">In Pipeline</div>
             </mat-card-content>
           </mat-card>
           <mat-card class="stat-card success">
             <mat-card-content>
+              <div class="stat-icon-wrap success"><mat-icon>check_circle_outline</mat-icon></div>
               <div class="stat-number">{{ store.offers() }}</div>
               <div class="stat-label">Offers</div>
             </mat-card-content>
           </mat-card>
           <mat-card class="stat-card info">
             <mat-card-content>
+              <div class="stat-icon-wrap info"><mat-icon>calendar_today</mat-icon></div>
               <div class="stat-number">{{ store.thisWeek() }}</div>
               <div class="stat-label">Applied This Week</div>
             </mat-card-content>
@@ -88,9 +90,9 @@ import { ScraperService, ScraperStatus } from '../../core/services/scraper.servi
             <mat-card-actions>
               <button mat-raised-button color="primary" (click)="runScraper()" [disabled]="scraperRunning()">
                 @if (scraperRunning()) {
-                  <mat-spinner diameter="18" style="display:inline-block;margin-right:8px"></mat-spinner>Running…
+                  <span class="btn-content"><mat-spinner diameter="18"></mat-spinner>Running…</span>
                 } @else {
-                  <mat-icon>refresh</mat-icon> Run Scraper
+                  <span class="btn-content"><mat-icon>refresh</mat-icon>Run Scraper</span>
                 }
               </button>
             </mat-card-actions>
@@ -100,16 +102,35 @@ import { ScraperService, ScraperStatus } from '../../core/services/scraper.servi
     </div>
   `,
   styles: [`
-    .dashboard { max-width: 1100px; }
-    h1 { margin-bottom: 24px; font-size: 24px; font-weight: 600; }
+    :host { display: block; width: 100%; }
+    .dashboard { width: 100%; }
+    .btn-content { display: inline-flex; align-items: center; gap: 6px; }
+    .page-header { margin-bottom: 28px; }
+    h1 { margin: 0; font-size: 26px; font-weight: 700; color: #1a1a2e; }
+    .spinner-wrap { display: flex; justify-content: center; padding: 48px; }
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    .stat-number { font-size: 40px; font-weight: 700; line-height: 1.1; }
-    .stat-label { font-size: 13px; color: #666; margin-top: 4px; }
-    .stat-card.accent .stat-number { color: #ff9800; }
-    .stat-card.success .stat-number { color: #4caf50; }
-    .stat-card.info .stat-number { color: #2196f3; }
+    .stat-card mat-card-content { padding: 20px !important; }
+    .stat-icon-wrap {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+    }
+    .stat-icon-wrap mat-icon { font-size: 20px; width: 20px; height: 20px; }
+    .stat-icon-wrap.default { background: #e8eaf6; color: #3f51b5; }
+    .stat-icon-wrap.accent  { background: #fff3e0; color: #e65100; }
+    .stat-icon-wrap.success { background: #e8f5e9; color: #2e7d32; }
+    .stat-icon-wrap.info    { background: #e3f2fd; color: #1565c0; }
+    .stat-number { font-size: 36px; font-weight: 700; line-height: 1.1; color: #1a1a2e; }
+    .stat-label { font-size: 13px; color: #777; margin-top: 4px; }
+    .stat-card.accent .stat-number { color: #e65100; }
+    .stat-card.success .stat-number { color: #2e7d32; }
+    .stat-card.info .stat-number { color: #1565c0; }
     .bottom-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-    .breakdown-row { display: flex; justify-content: space-between; padding: 4px 0; }
+    .breakdown-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px;
+    }
+    .breakdown-row:last-child { border-bottom: none; }
     .error-text { color: #f44336; font-size: 13px; }
   `],
 })

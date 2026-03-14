@@ -18,6 +18,8 @@ export interface JobFilters {
   source?: string;
   search?: string;
   sortBy?: string;
+  page?: number;
+  limit?: number;
 }
 
 interface JobsState {
@@ -26,6 +28,7 @@ interface JobsState {
   loading: boolean;
   statsLoading: boolean;
   filters: JobFilters;
+  total: number;
   error: string | null;
 }
 
@@ -34,7 +37,8 @@ const initialState: JobsState = {
   stats: null,
   loading: false,
   statsLoading: false,
-  filters: {},
+  filters: { page: 1, limit: 25 },
+  total: 0,
   error: null,
 };
 
@@ -42,8 +46,8 @@ export const JobsStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
 
-  withComputed(({ jobs, stats }) => ({
-    totalJobs: computed(() => jobs().length),
+  withComputed(({ total, jobs, stats }) => ({
+    totalJobs: computed(() => total()),
     sources: computed(() => [...new Set(jobs().map((j) => j.source))].sort()),
     pipeline: computed(() => stats()?.pipeline ?? 0),
     offers: computed(() => stats()?.offers ?? 0),
@@ -65,10 +69,12 @@ export const JobsStore = signalStore(
             if (filters.source)  params = params.set('source', filters.source);
             if (filters.search)  params = params.set('search', filters.search);
             if (filters.sortBy)  params = params.set('sortBy', filters.sortBy);
+            if (filters.page)    params = params.set('page', String(filters.page));
+            if (filters.limit)   params = params.set('limit', String(filters.limit));
 
-            return http.get<{ ok: boolean; jobs: Job[] }>(`${base}/jobs`, { params }).pipe(
+            return http.get<{ ok: boolean; jobs: Job[]; total: number }>(`${base}/jobs`, { params }).pipe(
               tapResponse({
-                next: ({ jobs }) => patchState(store, { jobs, loading: false }),
+                next: ({ jobs, total }) => patchState(store, { jobs, total, loading: false }),
                 error: (err: Error) => patchState(store, { loading: false, error: err.message }),
               }),
             );

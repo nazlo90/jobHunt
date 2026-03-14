@@ -1,6 +1,6 @@
-import { Component, OnInit, inject, linkedSignal } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatInputModule } from '@angular/material/input';
@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { JobsStore } from '../../../core/store/jobs.store';
 import { JOB_STATUSES } from '../../../core/models/job.model';
@@ -20,13 +21,14 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
     CommonModule, RouterLink, FormsModule, ReactiveFormsModule,
     MatTableModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatChipsModule, MatProgressBarModule,
+    MatPaginatorModule,
   ],
   template: `
     <div class="jobs-list">
       <div class="list-header">
         <h1>Jobs <span class="count">({{ store.totalJobs() }})</span></h1>
         <button mat-raised-button color="primary" routerLink="/jobs/new">
-          <mat-icon>add</mat-icon> Add Job
+          <span class="btn-content"><mat-icon>add</mat-icon>Add Job</span>
         </button>
       </div>
 
@@ -39,7 +41,7 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
 
         <mat-form-field appearance="outline">
           <mat-label>Status</mat-label>
-          <mat-select [(ngModel)]="selectedStatus" (ngModelChange)="applyFilters()">
+          <mat-select [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()">
             <mat-option value="">All</mat-option>
             @for (s of statuses; track s) {
               <mat-option [value]="s">{{ s }}</mat-option>
@@ -49,7 +51,7 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
 
         <mat-form-field appearance="outline">
           <mat-label>Source</mat-label>
-          <mat-select [(ngModel)]="selectedSource" (ngModelChange)="applyFilters()">
+          <mat-select [(ngModel)]="selectedSource" (ngModelChange)="onFilterChange()">
             <mat-option value="">All</mat-option>
             @for (s of store.sources(); track s) {
               <mat-option [value]="s">{{ s }}</mat-option>
@@ -59,7 +61,7 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
 
         <mat-form-field appearance="outline">
           <mat-label>Sort by</mat-label>
-          <mat-select [(ngModel)]="selectedSort" (ngModelChange)="applyFilters()">
+          <mat-select [(ngModel)]="selectedSort" (ngModelChange)="onFilterChange()">
             <mat-option value="created_at">Date Added</mat-option>
             <mat-option value="priority">Priority</mat-option>
             <mat-option value="company">Company</mat-option>
@@ -119,24 +121,37 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
         <tr mat-row *matRowDef="let row; columns: displayedColumns;"
             class="job-row" [routerLink]="['/jobs', row.id]"></tr>
       </table>
+
+      <mat-paginator
+        [length]="store.totalJobs()"
+        [pageSize]="pageSize"
+        [pageIndex]="pageIndex"
+        [pageSizeOptions]="[10, 25, 50, 100]"
+        (page)="onPageChange($event)"
+        showFirstLastButtons>
+      </mat-paginator>
     </div>
   `,
   styles: [`
-    .jobs-list { max-width: 1200px; }
-    .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    h1 { font-size: 24px; font-weight: 600; margin: 0; }
-    .count { font-size: 16px; color: #888; font-weight: 400; }
+    :host { display: block; width: 100%; }
+    .jobs-list { width: 100%; }
+    .btn-content { display: inline-flex; align-items: center; gap: 6px; }
+    .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    h1 { font-size: 26px; font-weight: 700; margin: 0; color: #1a1a2e; }
+    .count { font-size: 16px; color: #999; font-weight: 400; }
     .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
     .search-field { flex: 1; min-width: 200px; }
-    .jobs-table { width: 100%; }
-    .job-row:hover { background: #f5f5f5; cursor: pointer; }
+    .jobs-table { width: 100%; background: #fff; border-radius: 8px; overflow: hidden; }
+    .job-row:hover { background: #f5f7ff; cursor: pointer; }
     .company-link { color: #3f51b5; text-decoration: none; font-weight: 500; }
-    .status-badge { padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; }
-    .priority-star { color: #ffc107; font-size: 12px; }
+    .company-link:hover { text-decoration: underline; }
+    .priority-star { color: #ffc107; font-size: 12px; letter-spacing: -1px; }
   `],
 })
 export class JobsListComponent implements OnInit {
   readonly store = inject(JobsStore);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly statuses = JOB_STATUSES;
   readonly displayedColumns = ['priority', 'company', 'role', 'status', 'salary', 'source', 'createdAt'];
@@ -145,23 +160,65 @@ export class JobsListComponent implements OnInit {
   selectedStatus = '';
   selectedSource = '';
   selectedSort = 'created_at';
+  pageSize = 25;
+  pageIndex = 0;
 
   ngOnInit() {
-    this.store.loadJobs({});
+    const params = this.route.snapshot.queryParams;
+    this.searchCtrl.setValue(params['search'] ?? '', { emitEvent: false });
+    this.selectedStatus = params['status'] ?? '';
+    this.selectedSource = params['source'] ?? '';
+    this.selectedSort = params['sortBy'] ?? 'created_at';
+    this.pageSize = Number(params['limit'] ?? 25);
+    this.pageIndex = Math.max(0, Number(params['page'] ?? 1) - 1);
+
+    this.applyFilters();
 
     this.searchCtrl.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged(),
-    ).subscribe(() => this.applyFilters());
+    ).subscribe(() => {
+      this.pageIndex = 0;
+      this.applyFilters();
+    });
+  }
+
+  onFilterChange() {
+    this.pageIndex = 0;
+    this.applyFilters();
+  }
+
+  onPageChange(event: PageEvent) {
+    this.pageIndex = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.applyFilters();
   }
 
   applyFilters() {
-    this.store.loadJobs({
-      search: this.searchCtrl.value ?? '',
-      status: this.selectedStatus,
-      source: this.selectedSource,
+    const filters = {
+      search: this.searchCtrl.value || undefined,
+      status: this.selectedStatus || undefined,
+      source: this.selectedSource || undefined,
       sortBy: this.selectedSort,
+      page: this.pageIndex + 1,
+      limit: this.pageSize,
+    };
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        search: filters.search ?? null,
+        status: filters.status ?? null,
+        source: filters.source ?? null,
+        sortBy: filters.sortBy !== 'created_at' ? filters.sortBy : null,
+        page: filters.page > 1 ? filters.page : null,
+        limit: filters.limit !== 25 ? filters.limit : null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
     });
+
+    this.store.loadJobs(filters);
   }
 
   statusClass(status: string): string {

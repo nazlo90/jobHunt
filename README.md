@@ -1,113 +1,163 @@
-# JobHunt — Node.js + SQLite
+# JobHunt
+
+Personal job hunting platform: automated multi-source scraper, job tracker, and AI-powered CV adapter.
+
+## Monorepo Structure
 
 ```
-jobhunt-node/
-├── src/
-│   ├── db.js               ← SQLite schema + all queries (better-sqlite3)
-│   ├── server.js           ← Express REST API + serves UI
-│   ├── scraper.js          ← Djinni RSS, LinkedIn, RemoteOK, Wellfound
-│   ├── cv-adapter.js       ← Interactive CLI: paste JD → tailored CV + cover letter
-│   └── cv-adapter-data.js  ← Your master CV data (edit this file)
-├── public/
-│   └── index.html          ← Tracker UI (served by Express)
-├── data/
-│   └── jobhunt.db          ← SQLite database (auto-created)
-└── package.json
+jobHunt/
+├── apps/
+│   ├── api/          ← NestJS backend (port 3000)
+│   └── ui/           ← Angular 21 frontend (port 4200)
+├── db/
+│   └── jobhunt.db    ← SQLite database (shared, DO NOT delete)
+├── config.json       ← Scraper keywords, search terms, filters
+└── CLAUDE.md
 ```
+
+## Tech Stack
+
+- **Backend**: NestJS 11 + TypeORM + SQLite (better-sqlite3)
+- **Frontend**: Angular 21 (zoneless, standalone, signals) + Angular Material 21 + NgRx Signal Store
+- **AI**: Anthropic SDK (`@anthropic-ai/sdk`) — claude-opus-4-5 for CV generation
+- **Scheduling**: `@nestjs/schedule` with `@Cron` decorators
+- **Validation**: `class-validator` + `class-transformer`
 
 ---
 
 ## Setup
 
 ```bash
-cd jobhunt-node
-npm install
-
-# Set Claude API key (get free at console.anthropic.com)
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# Or add to ~/.zshrc / ~/.bashrc so it persists:
-echo 'export ANTHROPIC_API_KEY=sk-ant-...' >> ~/.zshrc
+# Install dependencies for both apps
+cd apps/api && npm install
+cd apps/ui && npm install
 ```
+
+Create `apps/api/.env` (copy from `.env.example` if present):
+```env
+# --- AI providers ---
+# Groq — used as an alternative LLM in cvs.service.ts
+GROQ_API_KEY=gsk_...
+
+# --- Server ---
+# Port the NestJS API listens on (default: 3000)
+PORT=3000
+
+# --- Database ---
+# Path to SQLite file, relative to apps/api/ (default: ../../db/jobhunt.db)
+DB_PATH=../../db/jobhunt.db
+
+# --- Environment ---
+NODE_ENV=development
+```
+
+> **Note:** Never commit `.env` to version control. Add it to `.gitignore`.
 
 ---
 
-## Usage
+## Running
 
-### 1. Start the tracker UI
+### API (NestJS — port 3000)
 
 ```bash
+cd apps/api
+npm run start:dev
+```
+
+### UI (Angular — port 4200)
+
+```bash
+cd apps/ui
 npm start
-# Opens: http://localhost:3000
+# Opens: http://localhost:4200
 ```
 
-The UI auto-refreshes every 30s, so you can keep it open while scraping.
-
-### 2. Run the scraper (separate terminal)
+### Run scraper manually
 
 ```bash
+cd apps/api
 npm run scrape
-# Scrapes: Djinni, LinkedIn, RemoteOK, Wellfound
-# New jobs go straight into SQLite → appear in UI immediately
 ```
 
-**Automate with cron (run daily at 8am):**
+Or trigger via API:
 ```bash
-crontab -e
-# Add:
-0 8 * * * cd /path/to/jobhunt-node && node src/scraper.js >> logs/scraper.log 2>&1
+curl -X POST http://localhost:3000/api/scraper/run
 ```
-
-### 3. Adapt your CV per application
-
-```bash
-npm run adapt
-# Paste job description, press END to finish
-# Get: relevance score, rewritten bullets, cover letter
-
-# Or link to a tracked job:
-node src/cv-adapter.js --job-id 42
-```
-
-CV results are also accessible from within the tracker UI — open any job,
-paste the JD, and generate directly in the browser.
 
 ---
 
 ## REST API
 
-All endpoints if you want to script against it:
+```
+GET    /api/jobs              query: status, source, search, sortBy
+GET    /api/jobs/stats        counts by status, source, etc.
+GET    /api/jobs/:id          single job
+POST   /api/jobs              create job
+PATCH  /api/jobs/:id          update job fields
+DELETE /api/jobs/:id          delete job
+
+GET    /api/cvs               recent adapted CVs
+GET    /api/cvs?job_id=:id    CVs for a specific job
+POST   /api/cvs/generate      generate adapted CV via Claude API
+                               body: { job_id?, job_description }
+
+POST   /api/scraper/run       trigger manual scrape
+GET    /api/scraper/status    last run info
+```
+
+---
+
+## UI Routes
 
 ```
-GET    /api/jobs              — list jobs (query: status, source, search, sortBy)
-GET    /api/jobs/stats        — counts by status, source, etc.
-GET    /api/jobs/:id          — single job
-POST   /api/jobs              — create job
-PATCH  /api/jobs/:id          — update job fields
-DELETE /api/jobs/:id          — delete job
-
-GET    /api/cvs               — recent adapted CVs
-GET    /api/cvs?job_id=42     — CVs for a specific job
-POST   /api/cvs/generate      — generate adapted CV via Claude API
-                                body: { job_id?, job_description, company?, role? }
+/dashboard        — overview stats and recent jobs
+/jobs             — full job list with filters
+/jobs/new         — add job manually
+/jobs/:id         — job detail + CV generation
 ```
+
+---
+
+## Domain Concepts
+
+- **Job**: scraped or manually entered job posting. Has `status` (Bookmarked → Applied → Technical → Final Round → Offer → Rejected), `priority` (1-5), `source`, `scrape_id` (MD5 dedup hash)
+- **AdaptedCV**: Claude-generated tailored CV + cover letter for a specific job. Has `relevance_score`, `keywords_found`, `missing_skills`, `cover_letter`, `advice`
+- **Scraper**: pulls jobs from 8 sources — Djinni (RSS), RemoteOK (API), Wellfound (HTML), Remotive (API), WeWorkRemotely (RSS), HackerNews (API), LinkedIn (HTML), Greenhouse ATS (API per company)
+- **Config**: `config.json` controls `searchTerms`, `strongKeywords`, `excludeKeywords`, `remoteOnly`, `minSalary`
 
 ---
 
 ## Customize
 
-**Scraper keywords** — edit `src/scraper.js`:
-```js
-const CONFIG = {
-  searchTerms: ['Senior Angular Developer', ...],
-  minSalary: 80_000,
-  includeKeywords: ['angular', 'rxjs', ...],
-  excludeKeywords: ['junior', 'intern', ...],
-};
+**Scraper keywords** — edit `config.json`:
+```json
+{
+  "searchTerms": ["Senior Angular Developer", "..."],
+  "strongKeywords": ["angular", "rxjs", "..."],
+  "excludeKeywords": ["junior", "intern", "..."],
+  "remoteOnly": true,
+  "minSalary": 80000
+}
 ```
 
-**Your CV** — edit `src/cv-adapter-data.js`:
-Update bullets, add new jobs, update skills list.
+**Your CV** — edit `apps/api/src/cv-adapter-data.ts`:
 
-**Database location** — defaults to `data/jobhunt.db`.
-Change `DB_PATH` in `src/db.js`.
+This is the single source of truth for AI-generated CV adaptation. Fill in all fields before using the CV generator:
+
+| Field | Description |
+|---|---|
+| `name`, `title`, `email`, `phone` | Your personal contact info |
+| `linkedin`, `github` | Profile URLs |
+| `profile` | 3–5 sentence professional summary |
+| `skills` | Grouped by category (Frontend, Backend, etc.) |
+| `experience` | Jobs in reverse chronological order, each with `bullets` as impact statements |
+| `education` | Degrees, institutions, periods |
+| `courses` | Optional certifications / online courses |
+| `languages` | Languages and proficiency levels |
+
+Tips:
+- Write `bullets` as measurable impact statements: _"Did X, resulting in Y% improvement"_
+- Keep `profile` general — the AI adapts it per job
+- Add as many `experience` entries as needed; the AI picks the most relevant ones
+
+**Database** — SQLite file at `db/jobhunt.db`. Do not delete — it stores all tracked jobs and adapted CVs.

@@ -13,31 +13,34 @@ export class JobsService {
     private readonly jobsRepo: Repository<Job>,
   ) {}
 
-  async findAll(query: QueryJobsDto): Promise<Job[]> {
-    const where: FindOptionsWhere<Job> = {};
+  async findAll(query: QueryJobsDto): Promise<{ jobs: Job[]; total: number }> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 25;
+    const skip = (page - 1) * limit;
 
-    if (query.status && query.status !== 'all') {
-      where.status = query.status as any;
-    }
-    if (query.source && query.source !== 'all') {
-      where.source = query.source;
-    }
     if (query.search) {
-      // TypeORM doesn't support OR in where object directly — use QueryBuilder
-      return this.jobsRepo.createQueryBuilder('job')
+      const qb = this.jobsRepo.createQueryBuilder('job')
         .where(
           '(job.company LIKE :s OR job.role LIKE :s OR job.techStack LIKE :s OR job.notes LIKE :s)',
           { s: `%${query.search}%` },
         )
         .andWhere(query.status && query.status !== 'all' ? 'job.status = :status' : '1=1', { status: query.status })
         .andWhere(query.source && query.source !== 'all' ? 'job.source = :source' : '1=1', { source: query.source })
-        .orderBy(this.orderClause(query.sortBy))
-        .limit(500)
-        .getMany();
+        .orderBy(...this.orderClause(query.sortBy))
+        .skip(skip)
+        .take(limit);
+
+      const [jobs, total] = await qb.getManyAndCount();
+      return { jobs, total };
     }
 
+    const where: FindOptionsWhere<Job> = {};
+    if (query.status && query.status !== 'all') where.status = query.status as any;
+    if (query.source && query.source !== 'all') where.source = query.source;
+
     const orderBy = this.orderMap(query.sortBy);
-    return this.jobsRepo.find({ where, order: orderBy, take: 500 });
+    const [jobs, total] = await this.jobsRepo.findAndCount({ where, order: orderBy, skip, take: limit });
+    return { jobs, total };
   }
 
   async getStats() {
@@ -105,15 +108,15 @@ export class JobsService {
     await this.jobsRepo.remove(job);
   }
 
-  private orderClause(sortBy?: string): string {
-    const map: Record<string, string> = {
-      created_at: 'job.createdAt DESC',
-      priority: 'job.priority DESC',
-      company: 'job.company ASC',
-      applied_date: 'job.appliedDate DESC',
-      salary: 'job.salaryRaw DESC',
+  private orderClause(sortBy?: string): [string, 'ASC' | 'DESC'] {
+    const map: Record<string, [string, 'ASC' | 'DESC']> = {
+      created_at: ['job.createdAt', 'DESC'],
+      priority: ['job.priority', 'DESC'],
+      company: ['job.company', 'ASC'],
+      applied_date: ['job.appliedDate', 'DESC'],
+      salary: ['job.salaryRaw', 'DESC'],
     };
-    return map[sortBy ?? 'created_at'] ?? 'job.createdAt DESC';
+    return map[sortBy ?? 'created_at'] ?? ['job.createdAt', 'DESC'];
   }
 
   private orderMap(sortBy?: string): Record<string, 'ASC' | 'DESC'> {
