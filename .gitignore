@@ -7,6 +7,9 @@ yarn-error.log*
 # Environment variables
 .env
 .env.local
+
+# Personal CV data (contains private info — copy from cv-adapter-data.example.ts)
+apps/api/src/cv-adapter-data.ts
 .env.development.local
 .env.test.local
 .env.production.local
