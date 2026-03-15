@@ -153,7 +153,7 @@ interface EditFields {
             </div>
           </mat-tab>
 
-          <mat-tab label="CV Adapter">
+          <mat-tab label="Review Job">
             <div class="tab-content">
 
               <!-- CV Selection -->
@@ -165,7 +165,7 @@ interface EditFields {
                   </div>
                 } @else {
                   <mat-form-field appearance="outline" class="cv-select-field">
-                    <mat-label>Select CV to adapt</mat-label>
+                    <mat-label>Select CV to compare</mat-label>
                     <mat-select [(ngModel)]="selectedCvId">
                       @for (cv of userCvs(); track cv.id) {
                         <mat-option [value]="cv.id">{{ cv.name }}</mat-option>
@@ -175,7 +175,7 @@ interface EditFields {
                   @if (selectedCvId()) {
                     <p class="cv-selected-note">
                       <mat-icon class="note-icon">check_circle</mat-icon>
-                      AI will adapt the selected CV to match this job without changing its structure.
+                      AI will compare your CV against the job description and score the match.
                     </p>
                   }
                 }
@@ -187,17 +187,17 @@ interface EditFields {
                           placeholder="Paste the full job description here..."></textarea>
               </mat-form-field>
 
-              <button mat-raised-button color="primary" (click)="generateCv()"
+              <button mat-raised-button color="primary" (click)="reviewJob()"
                       [disabled]="!jobDescription || cvLoading() || !selectedCvId()">
                 @if (cvLoading()) {
-                  <span class="btn-content"><mat-spinner diameter="18"></mat-spinner>Generating…</span>
+                  <span class="btn-content"><mat-spinner diameter="18"></mat-spinner>Analyzing…</span>
                 } @else {
-                  <span class="btn-content"><mat-icon>auto_awesome</mat-icon>Generate Adapted CV</span>
+                  <span class="btn-content"><mat-icon>manage_search</mat-icon>Analyze Match</span>
                 }
               </button>
 
               @if (!selectedCvId() && userCvs().length > 0) {
-                <p class="warn-note">Select a CV above to enable generation.</p>
+                <p class="warn-note">Select a CV above to enable analysis.</p>
               }
 
               @if (latestCv(); as cv) {
@@ -211,15 +211,9 @@ interface EditFields {
                       </span>
                       Relevance Score
                     </mat-card-title>
-                    <mat-card-subtitle>
-                      @if (cv.adaptedCvText) {
-                        <div class="cv-actions">
-                          <button mat-flat-button color="primary" (click)="previewCv(cv)">
-                            <span class="btn-content"><mat-icon>visibility</mat-icon>Preview CV</span>
-                          </button>
-                        </div>
-                      }
-                    </mat-card-subtitle>
+                    @if (cv.createdAt) {
+                      <mat-card-subtitle>Reviewed {{ cv.createdAt | date:'medium' }}</mat-card-subtitle>
+                    }
                   </mat-card-header>
                   <mat-card-content>
 
@@ -285,6 +279,46 @@ interface EditFields {
 
                   </mat-card-content>
                 </mat-card>
+
+                <!-- CV Adapter — available whenever analysis data exists -->
+                <mat-card class="cv-adapter-card">
+                  <mat-card-header>
+                    <mat-card-title>
+                      <mat-icon class="adapter-icon">description</mat-icon>
+                      CV Adapter
+                    </mat-card-title>
+                    <mat-card-subtitle>
+                      Generates a tailored version of your CV — only profile, skills and employment bullets are changed. Personal info, education and languages stay untouched.
+                    </mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content>
+                    <div class="cv-adapt-actions">
+                      <button mat-raised-button color="accent" (click)="adaptCv()"
+                              [disabled]="adaptLoading()">
+                        @if (adaptLoading()) {
+                          <span class="btn-content"><mat-spinner diameter="18"></mat-spinner>Adapting…</span>
+                        } @else {
+                          <span class="btn-content"><mat-icon>auto_fix_high</mat-icon>Adapt CV to this Job</span>
+                        }
+                      </button>
+
+                      @if (adaptedCvText()) {
+                        <button mat-stroked-button (click)="previewAdaptedCv()">
+                          <span class="btn-content"><mat-icon>visibility</mat-icon>Preview</span>
+                        </button>
+                        <button mat-stroked-button (click)="saveAdaptedCvAsPdf()">
+                          <span class="btn-content"><mat-icon>picture_as_pdf</mat-icon>Save as PDF</span>
+                        </button>
+                      }
+                    </div>
+                    @if (adaptedCvText()) {
+                      <p class="adapt-ready-note">
+                        <mat-icon class="note-icon">check_circle</mat-icon>
+                        CV adapted — use Preview to review, then Save as PDF.
+                      </p>
+                    }
+                  </mat-card-content>
+                </mat-card>
               }
             </div>
           </mat-tab>
@@ -342,6 +376,10 @@ interface EditFields {
     .exp-block ul { margin: 4px 0 0 18px; padding: 0; }
     .exp-block li { font-size: 13px; line-height: 1.5; margin-bottom: 2px; }
     .preformatted { white-space: pre-wrap; font-size: 14px; line-height: 1.6; }
+    .cv-adapter-card { margin-top: 12px; border: 1.5px solid #c5cae9; border-radius: 10px; background: #f8f9ff; }
+    .adapter-icon { vertical-align: middle; margin-right: 6px; color: #3949ab; }
+    .cv-adapt-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .adapt-ready-note { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 12px; color: #2e7d32; }
   `],
 })
 export class JobDetailComponent implements OnInit {
@@ -356,12 +394,14 @@ export class JobDetailComponent implements OnInit {
   private readonly dialog     = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly job       = signal<Job | null>(null);
-  readonly latestCv  = signal<AdaptedCv | null>(null);
-  readonly cvLoading = signal(false);
-  readonly userCvs   = signal<UserCv[]>([]);
-  readonly selectedCvId = signal<number | null>(null);
-  readonly statuses  = JOB_STATUSES;
+  readonly job           = signal<Job | null>(null);
+  readonly latestCv      = signal<AdaptedCv | null>(null);
+  readonly adaptedCvText = signal<string | null>(null);
+  readonly cvLoading     = signal(false);
+  readonly adaptLoading  = signal(false);
+  readonly userCvs       = signal<UserCv[]>([]);
+  readonly selectedCvId  = signal<number | null>(null);
+  readonly statuses      = JOB_STATUSES;
 
   // linkedSignal: stays in sync with job(), overridable for local edits
   editStatus   = linkedSignal(() => this.job()?.status   ?? 'Bookmarked');
@@ -399,6 +439,18 @@ export class JobDetailComponent implements OnInit {
         contact:        res.job.contact     ?? '',
         notes:          res.job.notes       ?? '',
       };
+
+      // Load latest saved review for this job
+      this.cvService.getReview(res.job.id).pipe(
+        takeUntilDestroyed(this.destroyRef),
+      ).subscribe(({ cv }) => {
+        if (cv) {
+          this.latestCv.set(cv);
+          if (cv.jobDescription && !this.jobDescription) {
+            this.jobDescription = cv.jobDescription;
+          }
+        }
+      });
     });
 
     this.userCvSvc.list().pipe(
@@ -416,12 +468,13 @@ export class JobDetailComponent implements OnInit {
     this.job.update((j) => j ? { ...j, [field]: value } : j);
   }
 
-  generateCv() {
+  reviewJob() {
     const cvId = this.selectedCvId();
     if (!cvId) return;
     const jobId = this.job()?.id ?? null;
     this.cvLoading.set(true);
-    this.cvService.generate(jobId, this.jobDescription, cvId).subscribe({
+    this.adaptedCvText.set(null);
+    this.cvService.review(jobId, this.jobDescription, cvId).subscribe({
       next: (res) => {
         this.latestCv.set(res.cv);
         this.cvLoading.set(false);
@@ -430,9 +483,38 @@ export class JobDetailComponent implements OnInit {
     });
   }
 
-  previewCv(cv: AdaptedCv) {
-    if (!cv.adaptedCvText) return;
-    this.openPreviewDialog(cv.adaptedCvText, `Adapted CV — ${cv.company || cv.role || 'Preview'}`);
+  adaptCv() {
+    const cvId = this.latestCv()?.id;
+    if (!cvId) return;
+    this.adaptLoading.set(true);
+    this.adaptedCvText.set(null);
+    this.cvService.adapt(cvId).subscribe({
+      next: (res) => {
+        this.adaptedCvText.set(res.adaptedCvText);
+        this.adaptLoading.set(false);
+      },
+      error: () => this.adaptLoading.set(false),
+    });
+  }
+
+  saveAdaptedCvAsPdf() {
+    const text = this.adaptedCvText();
+    if (!text) return;
+    const cv = this.latestCv();
+    const title = `Adapted CV — ${cv?.company || cv?.role || 'Preview'}`;
+    const html = buildCvHtml(text, title);
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (!win) return;
+    win.addEventListener('load', () => { URL.revokeObjectURL(url); setTimeout(() => win.print(), 200); });
+  }
+
+  previewAdaptedCv() {
+    const text = this.adaptedCvText();
+    if (!text) return;
+    const cv = this.latestCv();
+    this.openPreviewDialog(text, `Adapted CV — ${cv?.company || cv?.role || 'Preview'}`);
   }
 
   onAppliedDateChange(date: Date | null) {

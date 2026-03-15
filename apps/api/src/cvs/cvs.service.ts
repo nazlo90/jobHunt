@@ -5,6 +5,7 @@ import Groq from 'groq-sdk';
 import { jsonrepair } from 'jsonrepair';
 import { Job } from '../database/entities/job.entity';
 import { UserCv } from '../database/entities/user-cv.entity';
+import { AdaptedCv } from '../database/entities/adapted-cv.entity';
 import { GenerateCvDto } from './dto/generate-cv.dto';
 
 @Injectable()
@@ -16,9 +17,11 @@ export class CvsService {
     private readonly jobsRepo: Repository<Job>,
     @InjectRepository(UserCv)
     private readonly userCvsRepo: Repository<UserCv>,
+    @InjectRepository(AdaptedCv)
+    private readonly adaptedCvsRepo: Repository<AdaptedCv>,
   ) {}
 
-  async generate(dto: GenerateCvDto): Promise<Record<string, unknown>> {
+  async review(dto: GenerateCvDto): Promise<Record<string, unknown>> {
     const userCv = await this.userCvsRepo.findOne({ where: { id: dto.userCvId } });
     if (!userCv) throw new NotFoundException(`CV ${dto.userCvId} not found`);
 
@@ -81,17 +84,173 @@ Return a JSON object with exactly these fields:
       throw new HttpException('Failed to parse Groq response', HttpStatus.BAD_GATEWAY);
     }
 
+    // Save review to DB
+    const entity = this.adaptedCvsRepo.create({
+      jobId: dto.jobId ?? undefined,
+      company: job?.company ?? dto.company ?? '',
+      role: job?.role ?? dto.role ?? '',
+      relevanceScore: result.relevance_score as number,
+      keywordsFound: JSON.stringify(result.keywords_found ?? []),
+      missingSkills: JSON.stringify(result.missing_skills ?? []),
+      adaptedProfile: result.adapted_profile as string,
+      topExperience: JSON.stringify(result.top_experience ?? []),
+      coverLetter: result.cover_letter as string,
+      advice: result.advice as string,
+      jobDescription: dto.jobDescription,
+      userCvId: dto.userCvId,
+    });
+    await this.adaptedCvsRepo.save(entity);
+
     return {
-      company:        job?.company ?? dto.company ?? '',
-      role:           job?.role    ?? dto.role    ?? '',
-      relevanceScore: result.relevance_score,
-      keywordsFound:  result.keywords_found  ?? [],
-      missingSkills:  result.missing_skills  ?? [],
+      id: entity.id,
+      jobId: entity.jobId,
+      company: entity.company,
+      role: entity.role,
+      relevanceScore: entity.relevanceScore,
+      keywordsFound: result.keywords_found ?? [],
+      missingSkills: result.missing_skills ?? [],
       adaptedProfile: result.adapted_profile,
-      topExperience:  result.top_experience  ?? [],
-      adaptedCvText:  result.adapted_cv_text,
-      coverLetter:    result.cover_letter,
-      advice:         result.advice,
+      topExperience: result.top_experience ?? [],
+      coverLetter: result.cover_letter,
+      advice: result.advice,
+      jobDescription: entity.jobDescription,
+      userCvId: entity.userCvId,
+      createdAt: entity.createdAt,
     };
+  }
+
+  async getLatestForJob(jobId: number): Promise<Record<string, unknown> | null> {
+    const entity = await this.adaptedCvsRepo.findOne({
+      where: { jobId },
+      order: { createdAt: 'DESC' },
+    });
+    if (!entity) return null;
+
+    return {
+      id: entity.id,
+      jobId: entity.jobId,
+      company: entity.company,
+      role: entity.role,
+      relevanceScore: entity.relevanceScore,
+      keywordsFound: entity.keywordsFound ? JSON.parse(entity.keywordsFound) : [],
+      missingSkills: entity.missingSkills ? JSON.parse(entity.missingSkills) : [],
+      adaptedProfile: entity.adaptedProfile,
+      topExperience: entity.topExperience ? JSON.parse(entity.topExperience) : [],
+      coverLetter: entity.coverLetter,
+      advice: entity.advice,
+      jobDescription: entity.jobDescription,
+      userCvId: entity.userCvId,
+      createdAt: entity.createdAt,
+    };
+  }
+
+  // ── adapt ────────────────────────────────────────────────────────────────────
+
+  async adapt(adaptedCvId: number): Promise<{ adaptedCvText: string }> {
+    const adaptedCv = await this.adaptedCvsRepo.findOne({ where: { id: adaptedCvId } });
+    if (!adaptedCv) throw new NotFoundException(`AdaptedCv ${adaptedCvId} not found`);
+
+    if (!adaptedCv.userCvId || !adaptedCv.jobDescription) {
+      throw new HttpException(
+        'Missing CV or job description — re-run Analyze Match first',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const userCv = await this.userCvsRepo.findOne({ where: { id: adaptedCv.userCvId } });
+    if (!userCv) throw new NotFoundException(`User CV ${adaptedCv.userCvId} not found`);
+
+    const topExperience: Array<{ role: string; company: string; period: string; bullets: string[] }> =
+      adaptedCv.topExperience ? JSON.parse(adaptedCv.topExperience) : [];
+
+    const expFormatted = topExperience.length
+      ? topExperience
+          .map(exp =>
+            `${exp.role} | ${exp.company} | ${exp.period}\n${exp.bullets.map(b => `- ${b}`).join('\n')}`,
+          )
+          .join('\n\n')
+      : '(none — keep all original experience bullets)';
+
+    // The AI can read garbled PDF-extracted text (spaced letters, missing line breaks)
+    // and reconstruct clean formatted output that buildCvHtml can parse.
+    const systemPrompt = `You are a professional CV editor and formatter.
+
+You receive a raw CV extracted from PDF (may have artifacts: letter-spaced section names like "P R O F I L E", extra spaces, missing line breaks), plus adapted content from a prior analysis.
+
+YOUR TASK: Produce a clean, properly-formatted plain-text CV using this EXACT structure:
+
+[Full Name]
+[Job Title]
+[Phone | Email]
+[LinkedIn URL | GitHub URL]
+
+PROFILE
+[profile paragraph]
+
+CORE SKILLS
+[Category]: [value1], [value2], ...
+[Category]: ...
+
+EMPLOYMENT HISTORY
+[Role] | [Company] | [Period]
+Domain: [domain]
+Tech Stack: [stack]
+- [bullet]
+- [bullet]
+
+[next job...]
+
+EDUCATION
+[Period] | [Degree], [Institution] | [Location]
+
+LANGUAGES
+[Language]: [Level]
+[Language]: [Level]
+
+COURSES
+[Period] | [Course], [Provider]
+[Period] | [Course], [Provider]
+
+RULES:
+1. Use the adapted profile I provide — do NOT copy the original profile.
+2. For each job that has provided adapted bullets, use those bullets — do NOT use original bullets.
+3. For jobs NOT in the adapted list, copy original bullets VERBATIM.
+4. Copy ALL other content verbatim from the original: contact details, links, skills categories, education, languages, courses.
+5. Use the exact section names from the original CV (e.g. "EMPLOYMENT HISTORY" if that's what the original uses).
+6. Use " | " to separate role/company/period on one line.
+7. Use "- " (dash space) for ALL bullets.
+8. Return ONLY the plain-text CV — no markdown fences, no explanations.`;
+
+    const userPrompt = `ADAPTED PROFILE (replace original profile with this):
+${adaptedCv.adaptedProfile}
+
+ADAPTED EXPERIENCE BULLETS (replace bullets for these specific jobs):
+${expFormatted}
+
+KEYWORDS TO EMPHASISE IN SKILLS: ${
+      adaptedCv.keywordsFound ? JSON.parse(adaptedCv.keywordsFound).join(', ') : ''
+    }
+
+RAW CV FROM PDF (extract structure from this, keep all sections except profile/adapted-job bullets):
+${userCv.cvText}`;
+
+    let raw: string;
+    try {
+      const completion = await this.groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: 4000,
+      });
+      raw = (completion.choices[0].message.content ?? '').trim()
+        .replace(/^```(?:text|plain)?\s*\n?/m, '')
+        .replace(/\n?```\s*$/m, '');
+    } catch (err: any) {
+      throw new HttpException(err?.message ?? 'Groq API error', HttpStatus.BAD_GATEWAY);
+    }
+
+    return { adaptedCvText: raw };
   }
 }

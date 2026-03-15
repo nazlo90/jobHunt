@@ -60,9 +60,10 @@ export interface AdaptedCv {
   missingSkills: string[];
   adaptedProfile: string;
   topExperience: TopExperienceEntry[];
-  adaptedCvText?: string;
   coverLetter: string;
   advice: string;
+  jobDescription?: string;
+  userCvId?: number;
   createdAt: string;
 }
 

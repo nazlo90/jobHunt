@@ -40,6 +40,12 @@ export class AdaptedCv {
   @Column({ name: 'adapted_cv_text', nullable: true, type: 'text' })
   adaptedCvText: string;
 
+  @Column({ name: 'job_description', nullable: true, type: 'text' })
+  jobDescription: string;
+
+  @Column({ name: 'user_cv_id', nullable: true })
+  userCvId: number;
+
   @Column({ name: 'cover_letter', nullable: true, type: 'text' })
   coverLetter: string;
 

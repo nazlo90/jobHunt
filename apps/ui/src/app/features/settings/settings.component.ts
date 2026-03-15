@@ -546,16 +546,96 @@ export class SettingsComponent implements OnInit {
   private async extractTextFromPdf(arrayBuffer: ArrayBuffer): Promise<string> {
     const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
     const pdf = await loadingTask.promise;
-    const pages: string[] = [];
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
+    const pageTexts: string[] = [];
+
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
       const content = await page.getTextContent();
-      const pageText = (content.items as Array<{ str?: string }>)
-        .map(item => item.str ?? '')
-        .join(' ');
-      pages.push(pageText);
+
+      // Each pdfjs item has a transform matrix [sx,ky,kx,sy,x,y]
+      // Group items by their Y position (rounded) to reconstruct lines
+      type PdfItem = { str: string; x: number; y: number; w: number };
+      const items: PdfItem[] = (content.items as Array<{ str?: string; transform?: number[]; width?: number }>)
+        .filter(it => it.str?.trim())
+        .map(it => ({
+          str: it.str!,
+          x: it.transform?.[4] ?? 0,
+          y: Math.round((it.transform?.[5] ?? 0) / 3) * 3, // bucket to ±3 px
+          w: it.width ?? 0,
+        }));
+
+      // Group by Y bucket, sort each line left-to-right
+      const byY = new Map<number, PdfItem[]>();
+      for (const it of items) {
+        if (!byY.has(it.y)) byY.set(it.y, []);
+        byY.get(it.y)!.push(it);
+      }
+
+      // Sort lines top-to-bottom (higher y = higher on page in PDF coords)
+      const sortedY = Array.from(byY.keys()).sort((a, b) => b - a);
+
+      const lines: string[] = [];
+      for (const y of sortedY) {
+        const lineItems = byY.get(y)!.sort((a, b) => a.x - b.x);
+        let line = '';
+        for (let j = 0; j < lineItems.length; j++) {
+          if (j === 0) {
+            line = lineItems[j].str;
+          } else {
+            const prev = lineItems[j - 1];
+            const gap = lineItems[j].x - (prev.x + prev.w);
+            line += (gap > 3 ? ' ' : '') + lineItems[j].str;
+          }
+        }
+        line = line.trim();
+        if (line) lines.push(line);
+      }
+
+      pageTexts.push(lines.join('\n'));
     }
-    return pages.join('\n\n');
+
+    const raw = pageTexts.join('\n\n');
+    return this.normalizePdfText(raw);
+  }
+
+  /** Collapse letter-spaced section names ("P R O F I L E" → "PROFILE") and
+   *  split any line that begins with a known section name followed by content. */
+  private normalizePdfText(text: string): string {
+    // Collapse spaced-letter ALL-CAPS words (PDF letter-spacing artifact)
+    // Handles single chars ("P R O F I L E") and digraphs ("HIS TO RY")
+    let out = text.replace(/(?:^|(?<=\n))([A-Z]{1,2} ){2,}[A-Z]{1,2}(?=\s|$)/gm, m =>
+      m.replace(/ /g, ''),
+    );
+
+    // Fix known section names that lose their word boundary after collapsing
+    // cSpell:disable
+    const FIXES: [RegExp, string][] = [
+      [/CORESKILLS/g,              'CORE SKILLS'],
+      [/TECHNICALSKILLS/g,         'TECHNICAL SKILLS'],
+      [/KEYSKILLS/g,               'KEY SKILLS'],
+      [/WORKEXPERIENCE/g,          'WORK EXPERIENCE'],
+      [/PROFESSIONALEXPERIENCE/g,  'PROFESSIONAL EXPERIENCE'],
+      [/EMPLOYMENTHISTORY/g,       'EMPLOYMENT HISTORY'],
+    ];
+    // cSpell:enable
+    for (const [re, rep] of FIXES) out = out.replace(re, rep);
+
+    // Split lines where a known section name appears at the start followed by content
+    // e.g. "PROFILE Dynamic Senior..." → "PROFILE\nDynamic Senior..."
+    const SEC_NAMES = [
+      'EMPLOYMENT HISTORY', 'WORK EXPERIENCE', 'PROFESSIONAL EXPERIENCE',
+      'CORE SKILLS', 'TECHNICAL SKILLS', 'KEY SKILLS',
+      'PROFILE', 'SUMMARY', 'OBJECTIVE', 'LINKS',
+      'SKILLS', 'TECHNOLOGIES', 'LANGUAGES',
+      'EXPERIENCE', 'EMPLOYMENT',
+      'EDUCATION', 'QUALIFICATIONS',
+      'COURSES', 'CERTIFICATIONS', 'ACHIEVEMENTS', 'PROJECTS',
+    ].sort((a, b) => b.length - a.length); // longest first to avoid partial matches
+
+    const secPat = new RegExp(`^(${SEC_NAMES.join('|')})\\s+(.+)$`, 'gm');
+    out = out.replace(secPat, '$1\n$2');
+
+    return out.replace(/\n{3,}/g, '\n\n').trim();
   }
 
   previewCv(cv: UserCv) {
