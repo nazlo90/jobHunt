@@ -1,10 +1,12 @@
 @use '@angular/material' as mat;
 
+// ─── Material M3 Theme ───────────────────────────────────────────────────────
 html {
   @include mat.theme((
     color: (
       theme-type: light,
-      primary: mat.$azure-palette,
+      primary: mat.$violet-palette,
+      tertiary: mat.$green-palette,
     ),
     typography: (
       plain-family: 'Inter, sans-serif',
@@ -15,36 +17,62 @@ html {
   ));
 }
 
+// ─── Tailwind (no preflight to avoid Material conflicts) ─────────────────────
+@tailwind components;
+@tailwind utilities;
+
+// ─── Base ─────────────────────────────────────────────────────────────────────
 * { box-sizing: border-box; }
 
 html, body {
   height: 100%;
   margin: 0;
   font-family: 'Inter', sans-serif;
-  background: #f0f2f5;
+  background: #f8fafc;
 }
 
-// Status badge — base + colour variants (used across multiple components)
+// ─── Status Badges ────────────────────────────────────────────────────────────
 .status-badge {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 2px 10px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   white-space: nowrap;
+  letter-spacing: 0.1px;
 }
-.status-bookmarked  { background: #e3f2fd; color: #1565c0; }
-.status-new        { background: #e3f2fd; color: #1565c0; }
-.status-saved      { background: #fce4ec; color: #c62828; }
-.status-archived   { background: #f5f5f5; color: #757575; }
-.status-applied     { background: #e8f5e9; color: #2e7d32; }
-.status-screening   { background: #fff3e0; color: #e65100; }
-.status-technical   { background: #fce4ec; color: #880e4f; }
-.status-final-round { background: #f3e5f5; color: #4a148c; }
-.status-offer       { background: #e8f5e9; color: #1b5e20; }
-.status-rejected    { background: #fafafa; color: #757575; border: 1px solid #e0e0e0; }
+.status-new         { background: #e0e7ff; color: #3730a3; }
+.status-bookmarked  { background: #e0e7ff; color: #3730a3; }
+.status-saved       { background: #fce7f3; color: #9d174d; }
+.status-applied     { background: #d1fae5; color: #065f46; }
+.status-screening   { background: #fef3c7; color: #92400e; }
+.status-technical   { background: #ede9fe; color: #5b21b6; }
+.status-final-round { background: #f3e8ff; color: #6b21a8; }
+.status-offer       { background: #d1fae5; color: #064e3b; font-weight: 600; }
+.status-rejected    { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+.status-archived    { background: #f3f4f6; color: #9ca3af; }
 
-// CV preview dialog — make the mat-dialog-container fill the full dialog height
+// ─── Toast Overrides ──────────────────────────────────────────────────────────
+.toast-success .mdc-snackbar__surface {
+  background-color: #059669 !important;
+  color: #fff !important;
+}
+.toast-success .mat-mdc-button { color: rgba(255, 255, 255, 0.8) !important; }
+
+.toast-error .mdc-snackbar__surface {
+  background-color: #dc2626 !important;
+  color: #fff !important;
+}
+.toast-error .mat-mdc-button { color: rgba(255, 255, 255, 0.8) !important; }
+
+// ─── Nav Active Link ──────────────────────────────────────────────────────────
+.nav-active {
+  background: #ede9fe !important;
+  color: #7c3aed !important;
+}
+.nav-active .mat-icon { color: #7c3aed !important; }
+
+// ─── CV Preview Dialog ────────────────────────────────────────────────────────
 .cv-preview-dialog-panel .mat-mdc-dialog-container {
   padding: 0;
   overflow: hidden;
