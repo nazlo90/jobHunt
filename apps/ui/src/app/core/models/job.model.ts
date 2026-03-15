@@ -1,14 +1,16 @@
 export type JobStatus =
-  | 'Bookmarked'
+  | 'New'
+  | 'Saved'
   | 'Applied'
   | 'Screening'
   | 'Technical'
   | 'Final Round'
   | 'Offer'
-  | 'Rejected';
+  | 'Rejected'
+  | 'Archived';
 
 export const JOB_STATUSES: JobStatus[] = [
-  'Bookmarked', 'Applied', 'Screening', 'Technical', 'Final Round', 'Offer', 'Rejected',
+  'New', 'Saved', 'Applied', 'Screening', 'Technical', 'Final Round', 'Offer', 'Rejected', 'Archived',
 ];
 
 export interface Job {

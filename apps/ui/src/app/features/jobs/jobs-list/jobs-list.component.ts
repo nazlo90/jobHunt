@@ -1,4 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
@@ -117,6 +118,26 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
           <td mat-cell *matCellDef="let job">{{ job.createdAt | date:'MMM d' }}</td>
         </ng-container>
 
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let job">
+            @if (job.status === 'New') {
+              <button mat-icon-button color="primary" (click)="saveJob(job.id, $event)"
+                      title="Save to favorites">
+                <mat-icon>bookmark_add</mat-icon>
+              </button>
+              <button mat-icon-button (click)="archiveJob(job.id, $event)"
+                      title="Archive (dismiss)">
+                <mat-icon>archive</mat-icon>
+              </button>
+            }
+            <button mat-icon-button color="warn" (click)="deleteJob(job.id, $event)"
+                    title="Delete job">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns;"
             class="job-row" [routerLink]="['/jobs', row.id]"></tr>
@@ -150,14 +171,15 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
 })
 export class JobsListComponent implements OnInit {
   readonly store = inject(JobsStore);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  private readonly route      = inject(ActivatedRoute);
+  private readonly router     = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly statuses = JOB_STATUSES;
-  readonly displayedColumns = ['priority', 'company', 'role', 'status', 'salary', 'source', 'createdAt'];
+  readonly displayedColumns = ['priority', 'company', 'role', 'status', 'salary', 'source', 'createdAt', 'actions'];
 
   searchCtrl = new FormControl('');
-  selectedStatus = '';
+  selectedStatus = 'New';
   selectedSource = '';
   selectedSort = 'created_at';
   pageSize = 25;
@@ -166,17 +188,28 @@ export class JobsListComponent implements OnInit {
   ngOnInit() {
     const params = this.route.snapshot.queryParams;
     this.searchCtrl.setValue(params['search'] ?? '', { emitEvent: false });
-    this.selectedStatus = params['status'] ?? '';
+    this.selectedStatus = params['status'] ?? 'New';
     this.selectedSource = params['source'] ?? '';
     this.selectedSort = params['sortBy'] ?? 'created_at';
     this.pageSize = Number(params['limit'] ?? 25);
     this.pageIndex = Math.max(0, Number(params['page'] ?? 1) - 1);
 
-    this.applyFilters();
+    // Load data without navigating — URL params are already correct on initial load.
+    // Calling router.navigate() here would abort the in-flight route transition.
+    this.store.loadJobs({
+      search: this.searchCtrl.value || undefined,
+      status: this.selectedStatus || undefined,
+      source: this.selectedSource || undefined,
+      sortBy: this.selectedSort,
+      page: this.pageIndex + 1,
+      limit: this.pageSize,
+    });
+    this.store.loadStats(undefined);
 
     this.searchCtrl.valueChanges.pipe(
       debounceTime(300),
       distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef),
     ).subscribe(() => {
       this.pageIndex = 0;
       this.applyFilters();
@@ -221,7 +254,24 @@ export class JobsListComponent implements OnInit {
     this.store.loadJobs(filters);
   }
 
+  deleteJob(id: number, event: Event) {
+    event.stopPropagation();
+    if (confirm('Delete this job?')) {
+      this.store.deleteJob(id);
+    }
+  }
+
+  saveJob(id: number, event: Event) {
+    event.stopPropagation();
+    this.store.updateJob(id, { status: 'Saved' });
+  }
+
+  archiveJob(id: number, event: Event) {
+    event.stopPropagation();
+    this.store.updateJob(id, { status: 'Archived' });
+  }
+
   statusClass(status: string): string {
-    return `status-badge status-${status.toLowerCase().replace(' ', '-')}`;
+    return `status-badge status-${status.toLowerCase().replace(/\s+/g, '-')}`;
   }
 }

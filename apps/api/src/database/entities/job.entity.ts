@@ -5,13 +5,15 @@ import {
 import { AdaptedCv } from './adapted-cv.entity';
 
 export type JobStatus =
-  | 'Bookmarked'
+  | 'New'
+  | 'Saved'
   | 'Applied'
   | 'Screening'
   | 'Technical'
   | 'Final Round'
   | 'Offer'
-  | 'Rejected';
+  | 'Rejected'
+  | 'Archived';
 
 @Entity('jobs')
 export class Job {
@@ -42,7 +44,7 @@ export class Job {
   @Column({ name: 'tech_stack', nullable: true })
   techStack: string;
 
-  @Column({ default: 'Bookmarked' })
+  @Column({ default: 'New' })
   status: JobStatus;
 
   @Column({ default: 3 })

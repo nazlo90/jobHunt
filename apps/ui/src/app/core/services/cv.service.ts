@@ -21,11 +21,11 @@ export class CvService {
     return this.http.put<{ ok: boolean }>(`${this.base}/cvs/master-cv`, masterCv);
   }
 
-  generate(jobId: number | null, jobDescription: string, masterCv?: object): Observable<{ ok: boolean; cv: AdaptedCv }> {
+  generate(jobId: number | null, jobDescription: string, userCvId?: number): Observable<{ ok: boolean; cv: AdaptedCv }> {
     return this.http.post<{ ok: boolean; cv: AdaptedCv }>(`${this.base}/cvs/generate`, {
       jobId,
       jobDescription,
-      ...(masterCv ? { masterCv } : {}),
+      ...(userCvId ? { userCvId } : {}),
     });
   }
 }

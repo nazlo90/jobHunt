@@ -17,4 +17,8 @@ export class JobsService {
   createJob(data: Partial<Job>): Observable<{ ok: boolean; job: Job }> {
     return this.http.post<{ ok: boolean; job: Job }>(`${this.base}/jobs`, data);
   }
+
+  autocompleteFromUrl(url: string): Observable<Partial<Job>> {
+    return this.http.post<Partial<Job>>(`${this.base}/jobs/autocomplete`, { url });
+  }
 }

@@ -32,7 +32,7 @@ try {
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
 export const scrapeId = (title, company) =>
-  crypto.createHash('md5').update(`${title.toLowerCase()}${company.toLowerCase()}`).digest('hex').slice(0, 10);
+  crypto.createHash('md5').update(`${title.trim().toLowerCase()}${company.trim().toLowerCase()}`).digest('hex').slice(0, 10);
 
 export function scoreJob(title = '', description = '') {
   const titleLow = title.toLowerCase();
@@ -77,7 +77,7 @@ export function scoreJob(title = '', description = '') {
     }
   }
 
-  if (CONFIG.requireStrongMatch && score < 2) {
+  if (CONFIG.requireStrongMatch && score < (CONFIG.minScore ?? 2)) {
     return -999; // No meaningful frontend signal
   }
 
@@ -94,6 +94,10 @@ export function extractSalary(text = '') {
 
 export function stripHtml(html = '') {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+export function setConfig(overrides) {
+  Object.assign(CONFIG, overrides);
 }
 
 export { CONFIG };

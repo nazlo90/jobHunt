@@ -23,6 +23,13 @@ export class JobsController {
     return { ok: true, stats };
   }
 
+  @Post('autocomplete')
+  @HttpCode(HttpStatus.OK)
+  async autocomplete(@Body() body: { url: string }) {
+    const data = await this.jobsService.autocomplete(body.url);
+    return { ok: true, ...data };
+  }
+
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const job = await this.jobsService.findOne(id);

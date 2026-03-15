@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 import { JobStatus } from '../../database/entities/job.entity';
 
 const JOB_STATUSES: JobStatus[] = [
-  'Bookmarked', 'Applied', 'Screening', 'Technical', 'Final Round', 'Offer', 'Rejected',
+  'New', 'Saved', 'Applied', 'Screening', 'Technical', 'Final Round', 'Offer', 'Rejected', 'Archived',
 ];
 
 export class CreateJobDto {

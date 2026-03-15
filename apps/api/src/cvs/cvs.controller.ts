@@ -15,13 +15,14 @@ export class CvsController {
   }
 
   @Get('master-cv')
-  getMasterCv() {
-    return { ok: true, masterCv: this.cvsService.getMasterCv() };
+  async getMasterCv() {
+    const masterCv = await this.cvsService.getMasterCv();
+    return { ok: true, masterCv };
   }
 
   @Put('master-cv')
-  updateMasterCv(@Body() body: object) {
-    this.cvsService.saveMasterCv(body);
+  async updateMasterCv(@Body() body: object) {
+    await this.cvsService.saveMasterCv(body);
     return { ok: true };
   }
 

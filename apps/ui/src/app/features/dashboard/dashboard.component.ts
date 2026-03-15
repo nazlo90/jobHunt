@@ -1,11 +1,10 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { JobsStore } from '../../core/store/jobs.store';
-import { ScraperService, ScraperStatus } from '../../core/services/scraper.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -79,17 +78,17 @@ import { ScraperService, ScraperStatus } from '../../core/services/scraper.servi
           <mat-card>
             <mat-card-header><mat-card-title>Scraper</mat-card-title></mat-card-header>
             <mat-card-content>
-              @if (scraperStatus(); as s) {
+              @if (store.scraperStatus(); as s) {
                 <p>Last run: {{ s.lastRun?.finishedAt | date:'short' }}</p>
-                <p>New jobs: {{ s.lastRun?.inserted ?? 0 }}</p>
+                <p>New: {{ s.lastRun?.inserted ?? 0 }} &nbsp;|&nbsp; Updated: {{ s.lastRun?.updated ?? 0 }} &nbsp;|&nbsp; Removed: {{ s.lastRun?.deleted ?? 0 }}</p>
                 @if (s.lastRun?.errors?.length) {
                   <p class="error-text">{{ s.lastRun!.errors.length }} error(s)</p>
                 }
               }
             </mat-card-content>
             <mat-card-actions>
-              <button mat-raised-button color="primary" (click)="runScraper()" [disabled]="scraperRunning()">
-                @if (scraperRunning()) {
+              <button mat-raised-button color="primary" (click)="store.runScraper()" [disabled]="store.scraperRunning()">
+                @if (store.scraperRunning()) {
                   <span class="btn-content"><mat-spinner diameter="18"></mat-spinner>Running…</span>
                 } @else {
                   <span class="btn-content"><mat-icon>refresh</mat-icon>Run Scraper</span>
@@ -136,24 +135,8 @@ import { ScraperService, ScraperStatus } from '../../core/services/scraper.servi
 })
 export class DashboardComponent implements OnInit {
   readonly store = inject(JobsStore);
-  readonly scraperSvc = inject(ScraperService);
-  readonly scraperStatus = signal<ScraperStatus | null>(null);
-  readonly scraperRunning = signal(false);
 
   ngOnInit() {
     this.store.loadStats(undefined);
-    this.scraperSvc.getStatus().subscribe((s) => this.scraperStatus.set(s));
-  }
-
-  runScraper() {
-    this.scraperRunning.set(true);
-    this.scraperSvc.run().subscribe({
-      next: () => {
-        this.scraperRunning.set(false);
-        this.store.loadStats(undefined);
-        this.scraperSvc.getStatus().subscribe((s) => this.scraperStatus.set(s));
-      },
-      error: () => this.scraperRunning.set(false),
-    });
   }
 }

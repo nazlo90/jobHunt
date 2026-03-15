@@ -11,9 +11,12 @@ export class ScraperController {
   }
 
   @Post('run')
-  @HttpCode(HttpStatus.OK)
-  async run() {
-    const run = await this.scraperService.run();
-    return { ok: true, run };
+  @HttpCode(HttpStatus.ACCEPTED)
+  run() {
+    // Fire and forget — client polls /scraper/status for progress
+    this.scraperService.run().catch((err) =>
+      console.error('Scraper background error:', err),
+    );
+    return { ok: true, started: true };
   }
 }

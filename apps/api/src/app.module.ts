@@ -6,6 +6,8 @@ import { JobsModule } from './jobs/jobs.module';
 import { CvsModule } from './cvs/cvs.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { McpModule } from './mcp/mcp.module';
+import { ScraperConfigModule } from './scraper-config/scraper-config.module';
+import { UserCvsModule } from './user-cvs/user-cvs.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { McpModule } from './mcp/mcp.module';
     JobsModule,
     CvsModule,
     ScraperModule,
+    ScraperConfigModule,
+    UserCvsModule,
     McpModule,
   ],
 })

@@ -26,4 +26,9 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/jobs/job-detail/job-detail.component').then((m) => m.JobDetailComponent),
   },
+  {
+    path: 'settings',
+    loadComponent: () =>
+      import('./features/settings/settings.component').then((m) => m.SettingsComponent),
+  },
 ];

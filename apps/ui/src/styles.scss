@@ -34,9 +34,23 @@ html, body {
   white-space: nowrap;
 }
 .status-bookmarked  { background: #e3f2fd; color: #1565c0; }
+.status-new        { background: #e3f2fd; color: #1565c0; }
+.status-saved      { background: #fce4ec; color: #c62828; }
+.status-archived   { background: #f5f5f5; color: #757575; }
 .status-applied     { background: #e8f5e9; color: #2e7d32; }
 .status-screening   { background: #fff3e0; color: #e65100; }
 .status-technical   { background: #fce4ec; color: #880e4f; }
 .status-final-round { background: #f3e5f5; color: #4a148c; }
 .status-offer       { background: #e8f5e9; color: #1b5e20; }
 .status-rejected    { background: #fafafa; color: #757575; border: 1px solid #e0e0e0; }
+
+// CV preview dialog — make the mat-dialog-container fill the full dialog height
+.cv-preview-dialog-panel .mat-mdc-dialog-container {
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+  .mdc-dialog__surface {
+    height: 100%;
+    overflow: hidden;
+  }
+}

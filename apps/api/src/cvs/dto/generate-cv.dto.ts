@@ -22,4 +22,13 @@ export class GenerateCvDto {
   @IsOptional()
   @IsObject()
   masterCv?: object;
+
+  @IsOptional()
+  @IsString()
+  cvText?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  userCvId?: number;
 }
