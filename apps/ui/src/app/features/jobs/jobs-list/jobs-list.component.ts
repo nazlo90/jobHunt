@@ -15,9 +15,9 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
-import { JobsStore } from '../../../core/store/jobs.store';
-import { ToastService } from '../../../core/services/toast.service';
-import { JOB_STATUSES, JobStatus } from '../../../core/models/job.model';
+import { JobsStore } from '@core/store/jobs.store';
+import { ToastService } from '@core/services/toast.service';
+import { JOB_STATUSES, JobStatus } from '@core/models/job.model';
 
 @Component({
   selector: 'app-jobs-list',
@@ -156,9 +156,19 @@ import { JOB_STATUSES, JobStatus } from '../../../core/models/job.model';
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let job">
-            <button mat-icon-button (click)="deleteJob(job.id, $event)" title="Delete job">
-              <mat-icon class="!text-red-500">delete</mat-icon>
-            </button>
+            <div class="flex items-center">
+              @if (job.url) {
+                <a mat-icon-button [href]="job.url" target="_blank" rel="noopener"
+                   (click)="$event.stopPropagation()" matTooltip="Open job posting">
+                  <mat-icon class="!text-slate-400">open_in_new</mat-icon>
+                </a>
+              } @else {
+                <span class="w-10"></span>
+              }
+              <button mat-icon-button (click)="deleteJob(job.id, $event)" title="Delete job">
+                <mat-icon class="!text-red-500">delete</mat-icon>
+              </button>
+            </div>
           </td>
         </ng-container>
 
@@ -244,7 +254,7 @@ export class JobsListComponent implements OnInit {
   readonly displayedColumns = ['select', 'priority', 'company', 'role', 'status', 'salary', 'source', 'createdAt', 'actions'];
 
   searchCtrl = new FormControl('');
-  selectedStatus = 'New';
+  selectedStatus = '';
   selectedSource = '';
   selectedSort = 'created_at';
   selectedMinPriority = 0;
@@ -274,12 +284,13 @@ export class JobsListComponent implements OnInit {
 
   ngOnInit() {
     const params = this.route.snapshot.queryParams;
+    const saved = this.store.filters();
     this.searchCtrl.setValue(params['search'] ?? '', { emitEvent: false });
-    this.selectedStatus = params['status'] ?? 'New';
-    this.selectedSource = params['source'] ?? '';
-    this.selectedSort = params['sortBy'] ?? 'created_at';
-    this.selectedMinPriority = Number(params['minPriority'] ?? 0);
-    this.pageSize = Number(params['limit'] ?? 25);
+    this.selectedStatus = params['status'] ?? saved.status ?? '';
+    this.selectedSource = params['source'] ?? saved.source ?? '';
+    this.selectedSort = params['sortBy'] ?? saved.sortBy ?? 'created_at';
+    this.selectedMinPriority = Number(params['minPriority'] ?? saved.minPriority ?? 0);
+    this.pageSize = Number(params['limit'] ?? saved.limit ?? 25);
     this.pageIndex = Math.max(0, Number(params['page'] ?? 1) - 1);
 
     this.store.loadJobs({

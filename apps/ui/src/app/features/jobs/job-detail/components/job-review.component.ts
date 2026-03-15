@@ -12,12 +12,12 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { CvService } from '../../../../core/services/cv.service';
-import { ToastService } from '../../../../core/services/toast.service';
-import { AdaptedCv } from '../../../../core/models/job.model';
-import { UserCv } from '../../../../core/models/user-cv.model';
-import { CvPreviewDialogComponent } from '../../../../shared/cv-preview-dialog/cv-preview-dialog.component';
-import { buildCvHtml } from '../../../../shared/cv-html.utils';
+import { CvService } from '@core/services/cv.service';
+import { ToastService } from '@core/services/toast.service';
+import { AdaptedCv } from '@core/models/job.model';
+import { UserCv } from '@core/models/user-cv.model';
+import { CvPreviewDialogComponent } from '@shared/cv-preview-dialog/cv-preview-dialog.component';
+import { buildCvHtml } from '@shared/cv-html.utils';
 
 @Component({
   selector: 'app-job-review',

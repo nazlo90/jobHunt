@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -8,9 +8,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { JobsService } from '../../../core/services/jobs.service';
-import { ToastService } from '../../../core/services/toast.service';
-import { JOB_STATUSES, JobStatus } from '../../../core/models/job.model';
+import { JobsService } from '@core/services/jobs.service';
+import { JobsStore } from '@core/store/jobs.store';
+import { ToastService } from '@core/services/toast.service';
+import { JOB_STATUSES, JobStatus } from '@core/models/job.model';
 
 @Component({
   selector: 'app-add-job',
@@ -21,7 +22,7 @@ import { JOB_STATUSES, JobStatus } from '../../../core/models/job.model';
     MatSelectModule, MatInputModule, MatProgressSpinnerModule, MatTooltipModule,
   ],
   template: `
-    <div class="w-full max-w-2xl mx-auto">
+    <div>
 
       <!-- Header -->
       <div class="flex items-center gap-2 mb-6">
@@ -38,23 +39,25 @@ import { JOB_STATUSES, JobStatus } from '../../../core/models/job.model';
           <div class="flex items-start gap-3 mb-1">
             <mat-form-field appearance="outline" class="flex-1">
               <mat-label>Job URL — paste to autocomplete fields</mat-label>
-              <input matInput [(ngModel)]="autocompleteUrl" type="url"
+              <input matInput [ngModel]="autocompleteUrl()" (ngModelChange)="autocompleteUrl.set($event)" type="url"
                      placeholder="https://…" (keydown.enter)="autocomplete()">
               <mat-icon matPrefix>link</mat-icon>
-              @if (autocompleteUrl && !isValidUrl) {
+              @if (autocompleteUrl() && !isValidUrl()) {
                 <mat-error>Enter a valid URL starting with http:// or https://</mat-error>
               }
             </mat-form-field>
             <button mat-flat-button color="accent" (click)="autocomplete()"
-                    [disabled]="!autocompleteUrl || !isValidUrl || autocompleting"
+                    [disabled]="!autocompleteUrl() || !isValidUrl() || autocompleting()"
                     matTooltip="Fetch job details from URL using AI"
                     class="mt-1 h-[52px]">
-              @if (autocompleting) {
-                <mat-spinner diameter="18" class="inline-block mr-1.5"></mat-spinner>
-              } @else {
-                <mat-icon>auto_awesome</mat-icon>
-              }
-              Autocomplete
+              <span class="flex items-center gap-1.5">
+                @if (autocompleting()) {
+                  <mat-spinner diameter="18"></mat-spinner>
+                } @else {
+                  <mat-icon>auto_awesome</mat-icon>
+                }
+                Autocomplete
+              </span>
             </button>
           </div>
 
@@ -130,9 +133,9 @@ import { JOB_STATUSES, JobStatus } from '../../../core/models/job.model';
 
         <mat-card-actions class="!px-4 !pb-4 flex gap-2">
           <button mat-flat-button color="primary" (click)="save()"
-                  [disabled]="!form.company || !form.role || saving">
+                  [disabled]="!form.company || !form.role || saving()">
             <span class="flex items-center gap-1.5">
-              @if (saving) { <mat-spinner diameter="18"></mat-spinner>Saving… } @else { <mat-icon>save</mat-icon>Save Job }
+              @if (saving()) { <mat-spinner diameter="18"></mat-spinner>Saving… } @else { <mat-icon>save</mat-icon>Save Job }
             </span>
           </button>
           <button mat-button routerLink="/jobs">Cancel</button>
@@ -143,20 +146,21 @@ import { JOB_STATUSES, JobStatus } from '../../../core/models/job.model';
 })
 export class AddJobComponent {
   private readonly jobsSvc = inject(JobsService);
+  private readonly store = inject(JobsStore);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
 
   readonly statuses = JOB_STATUSES;
 
-  autocompleteUrl = '';
-  autocompleting = false;
+  autocompleteUrl = signal('');
+  autocompleting = signal(false);
 
-  get isValidUrl(): boolean {
+  isValidUrl = computed(() => {
     try {
-      const u = new URL(this.autocompleteUrl);
+      const u = new URL(this.autocompleteUrl());
       return u.protocol === 'http:' || u.protocol === 'https:';
     } catch { return false; }
-  }
+  });
 
   form = {
     company: '',
@@ -172,14 +176,14 @@ export class AddJobComponent {
     notes: '',
   };
 
-  saving = false;
+  saving = signal(false);
 
   autocomplete() {
-    if (!this.isValidUrl) return;
-    this.autocompleting = true;
-    this.jobsSvc.autocompleteFromUrl(this.autocompleteUrl).subscribe({
+    if (!this.isValidUrl()) return;
+    this.autocompleting.set(true);
+    this.jobsSvc.autocompleteFromUrl(this.autocompleteUrl()).subscribe({
       next: (data: any) => {
-        this.form.url = this.autocompleteUrl;
+        this.form.url = this.autocompleteUrl();
         this.form.company = data.company || this.form.company;
         this.form.role = data.role || this.form.role;
         this.form.salary = data.salary ?? this.form.salary;
@@ -187,21 +191,21 @@ export class AddJobComponent {
         this.form.techStack = data.techStack ?? this.form.techStack;
         this.form.source = data.source || this.form.source;
         this.form.notes = data.notes ?? this.form.notes;
-        this.autocompleting = false;
+        this.autocompleting.set(false);
         this.toast.success('Fields filled from URL');
       },
-      error: () => { this.autocompleting = false; },
+      error: () => { this.autocompleting.set(false); },
     });
   }
 
   save() {
-    this.saving = true;
-    this.jobsSvc.createJob(this.form).subscribe({
-      next: ({ job }) => {
+    this.saving.set(true);
+    this.store.addJob(this.form).subscribe({
+      next: (job) => {
         this.toast.success('Job saved');
         this.router.navigate(['/jobs', job.id]);
       },
-      error: () => { this.saving = false; },
+      error: () => { this.saving.set(false); },
     });
   }
 }

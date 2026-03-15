@@ -7,7 +7,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ScraperProfile } from '../../../core/models/scraper-profile.model';
+import { ScraperProfile } from '@core/models/scraper-profile.model';
 
 @Component({
   selector: 'app-profile-selector',

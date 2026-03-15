@@ -4,15 +4,9 @@ import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-brows
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { CvPreviewDialogData } from './cv-preview-dialog.model';
 
-export interface CvPreviewDialogData {
-  /** URL to the raw PDF file — used for stored CVs. */
-  fileUrl?: string;
-  /** Pre-built HTML string — used for AI-generated adapted CVs. */
-  html?: string;
-  /** Dialog title shown in the toolbar. */
-  title: string;
-}
+export type { CvPreviewDialogData };
 
 @Component({
   selector: 'app-cv-preview-dialog',

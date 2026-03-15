@@ -9,11 +9,32 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
-import { UserCvService } from '../../../core/services/user-cv.service';
-import { ToastService } from '../../../core/services/toast.service';
-import { UserCv } from '../../../core/models/user-cv.model';
-import { CvPreviewDialogComponent } from '../../../shared/cv-preview-dialog/cv-preview-dialog.component';
+import { UserCvService } from '@core/services/user-cv.service';
+import { ToastService } from '@core/services/toast.service';
+import { UserCv } from '@core/models/user-cv.model';
+import { CvPreviewDialogComponent } from '@shared/cv-preview-dialog/cv-preview-dialog.component';
 import * as pdfjsLib from 'pdfjs-dist';
+
+type PdfItem = { str: string; x: number; y: number; w: number };
+
+const PDF_FIXES: [RegExp, string][] = [
+  [/CORESKILLS/g, 'CORE SKILLS'],
+  [/TECHNICALSKILLS/g, 'TECHNICAL SKILLS'],
+  [/KEYSKILLS/g, 'KEY SKILLS'],
+  [/WORKEXPERIENCE/g, 'WORK EXPERIENCE'],
+  [/PROFESSIONALEXPERIENCE/g, 'PROFESSIONAL EXPERIENCE'],
+  [/EMPLOYMENTHISTORY/g, 'EMPLOYMENT HISTORY'],
+];
+
+const PDF_SECTION_NAMES = [
+  'EMPLOYMENT HISTORY', 'WORK EXPERIENCE', 'PROFESSIONAL EXPERIENCE',
+  'CORE SKILLS', 'TECHNICAL SKILLS', 'KEY SKILLS',
+  'PROFILE', 'SUMMARY', 'OBJECTIVE', 'LINKS',
+  'SKILLS', 'TECHNOLOGIES', 'LANGUAGES',
+  'EXPERIENCE', 'EMPLOYMENT',
+  'EDUCATION', 'QUALIFICATIONS',
+  'COURSES', 'CERTIFICATIONS', 'ACHIEVEMENTS', 'PROJECTS',
+].sort((a, b) => b.length - a.length);
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -148,7 +169,6 @@ export class CvManagerComponent implements OnInit {
       const page = await pdf.getPage(p);
       const content = await page.getTextContent();
 
-      type PdfItem = { str: string; x: number; y: number; w: number };
       const items: PdfItem[] = (content.items as Array<{ str?: string; transform?: number[]; width?: number }>)
         .filter(it => it.str?.trim())
         .map(it => ({
@@ -191,27 +211,9 @@ export class CvManagerComponent implements OnInit {
     let out = text.replace(/(?:^|(?<=\n))([A-Z]{1,2} ){2,}[A-Z]{1,2}(?=\s|$)/gm, m =>
       m.replace(/ /g, ''),
     );
-    const FIXES: [RegExp, string][] = [
-      [/CORESKILLS/g, 'CORE SKILLS'],
-      [/TECHNICALSKILLS/g, 'TECHNICAL SKILLS'],
-      [/KEYSKILLS/g, 'KEY SKILLS'],
-      [/WORKEXPERIENCE/g, 'WORK EXPERIENCE'],
-      [/PROFESSIONALEXPERIENCE/g, 'PROFESSIONAL EXPERIENCE'],
-      [/EMPLOYMENTHISTORY/g, 'EMPLOYMENT HISTORY'],
-    ];
-    for (const [re, rep] of FIXES) out = out.replace(re, rep);
+    for (const [re, rep] of PDF_FIXES) out = out.replace(re, rep);
 
-    const SEC_NAMES = [
-      'EMPLOYMENT HISTORY', 'WORK EXPERIENCE', 'PROFESSIONAL EXPERIENCE',
-      'CORE SKILLS', 'TECHNICAL SKILLS', 'KEY SKILLS',
-      'PROFILE', 'SUMMARY', 'OBJECTIVE', 'LINKS',
-      'SKILLS', 'TECHNOLOGIES', 'LANGUAGES',
-      'EXPERIENCE', 'EMPLOYMENT',
-      'EDUCATION', 'QUALIFICATIONS',
-      'COURSES', 'CERTIFICATIONS', 'ACHIEVEMENTS', 'PROJECTS',
-    ].sort((a, b) => b.length - a.length);
-
-    const secPat = new RegExp(`^(${SEC_NAMES.join('|')})\\s+(.+)$`, 'gm');
+    const secPat = new RegExp(`^(${PDF_SECTION_NAMES.join('|')})\\s+(.+)$`, 'gm');
     out = out.replace(secPat, '$1\n$2');
     return out.replace(/\n{3,}/g, '\n\n').trim();
   }

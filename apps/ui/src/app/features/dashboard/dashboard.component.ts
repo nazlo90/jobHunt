@@ -8,9 +8,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { JobsStore } from '../../core/store/jobs.store';
-import { ScraperProfileService } from '../../core/services/scraper-profile.service';
-import { ScraperProfile } from '../../core/models/scraper-profile.model';
+import { JobsStore } from '@core/store/jobs.store';
+import { ScraperProfileService } from '@core/services/scraper-profile.service';
+import { ScraperProfile } from '@core/models/scraper-profile.model';
 
 @Component({
   selector: 'app-dashboard',

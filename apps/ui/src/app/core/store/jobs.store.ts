@@ -9,46 +9,13 @@ import {
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { tapResponse } from '@ngrx/operators';
-import { pipe, switchMap, tap, debounceTime, distinctUntilChanged, interval, Subscription, forkJoin } from 'rxjs';
+import { pipe, switchMap, tap, debounceTime, distinctUntilChanged, interval, Subscription, forkJoin, Observable } from 'rxjs';
 import { takeWhile } from 'rxjs/operators';
-import { Job, JobStats, JobStatus } from '../models/job.model';
-import { environment } from '../../../environments/environment';
+import { Job, JobStats, JobStatus } from '@core/models/job.model';
+import { ScraperStatus, JobFilters, JobsState } from '@core/models/jobs.store.model';
+import { environment } from '@env/environment';
 
-export interface ScraperStatus {
-  running: boolean;
-  lastRun: {
-    startedAt: string;
-    finishedAt?: string;
-    total: number;
-    inserted: number;
-    updated: number;
-    deleted: number;
-    errors: string[];
-  } | null;
-}
-
-export interface JobFilters {
-  status?: string;
-  source?: string;
-  search?: string;
-  sortBy?: string;
-  page?: number;
-  limit?: number;
-  minPriority?: number;
-}
-
-interface JobsState {
-  jobs: Job[];
-  stats: JobStats | null;
-  loading: boolean;
-  statsLoading: boolean;
-  filters: JobFilters;
-  total: number;
-  error: string | null;
-  scraperStatus: ScraperStatus | null;
-  scraperStopping: boolean;
-  selectedIds: number[];
-}
+export type { ScraperStatus, JobFilters };
 
 const initialState: JobsState = {
   jobs: [],
@@ -165,6 +132,28 @@ export const JobsStore = signalStore(
         ),
       ),
 
+      addJob(data: Partial<Job>): Observable<Job> {
+        return new Observable<Job>((observer) => {
+          http.post<{ ok: boolean; job: Job }>(`${base}/jobs`, data).pipe(
+            tapResponse({
+              next: ({ job }) => {
+                const activeStatus = store.filters().status;
+                if (!activeStatus || job.status === activeStatus) {
+                  patchState(store, { jobs: [job, ...store.jobs()], total: store.total() + 1 });
+                }
+                reloadData();
+                observer.next(job);
+                observer.complete();
+              },
+              error: (err: Error) => {
+                patchState(store, { error: err.message });
+                observer.error(err);
+              },
+            }),
+          ).subscribe();
+        });
+      },
+
       updateJob(id: number, data: Partial<Job>): void {
         http.patch<{ ok: boolean; job: Job }>(`${base}/jobs/${id}`, data).pipe(
           tapResponse({
@@ -262,9 +251,13 @@ export const JobsStore = signalStore(
               const activeStatus = store.filters().status;
               let jobs = store.jobs().map((j) => updatedMap.get(j.id) ?? j);
               if (activeStatus) {
+                const before = jobs.length;
                 jobs = jobs.filter((j) => j.status === activeStatus);
+                const removed = before - jobs.length;
+                patchState(store, { jobs, total: store.total() - removed, selectedIds: [] });
+              } else {
+                patchState(store, { jobs, selectedIds: [] });
               }
-              patchState(store, { jobs, selectedIds: [] });
             },
             error: (err: Error) => patchState(store, { error: err.message }),
           }),

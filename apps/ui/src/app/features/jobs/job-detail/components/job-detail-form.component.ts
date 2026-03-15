@@ -8,22 +8,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Job, JOB_STATUSES, JobStatus } from '../../../../core/models/job.model';
-
-interface FormFields {
-  company: string;
-  role: string;
-  url: string;
-  status: JobStatus;
-  priority: number;
-  salary: string;
-  location: string;
-  techStack: string;
-  appliedDate: string;
-  appliedDateObj: Date | null;
-  contact: string;
-  notes: string;
-}
+import { Job, JOB_STATUSES, JobStatus } from '@core/models/job.model';
+import { FormFields } from './job-detail-form.model';
 
 @Component({
   selector: 'app-job-detail-form',

@@ -6,7 +6,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { JobsStore } from './core/store/jobs.store';
+import { JobsStore } from '@core/store/jobs.store';
 
 @Component({
   selector: 'app-root',

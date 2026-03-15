@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, input, output, effect, DestroyRef } from '@angular/core';
+import { Component, inject, signal, input, output, effect, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
@@ -13,17 +13,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ScraperProfileService } from '../../../core/services/scraper-profile.service';
-import { ToastService } from '../../../core/services/toast.service';
-import { ScraperProfile } from '../../../core/models/scraper-profile.model';
-
-type ArrayField = 'searchTerms' | 'strongKeywords' | 'additionalKeywords' | 'excludeTitle' | 'excludeKeywords';
-
-const ALL_SOURCES = [
-  'Djinni', 'RemoteOK', 'Wellfound', 'Remotive', 'WeWorkRemotely',
-  'HackerNews', 'Himalayas', 'Jobicy', 'TheMuse', 'DOU',
-  'LinkedIn', 'Greenhouse',
-];
+import { ScraperProfileService } from '@core/services/scraper-profile.service';
+import { ToastService } from '@core/services/toast.service';
+import { ScraperProfile } from '@core/models/scraper-profile.model';
+import { ArrayField, ALL_SOURCES } from '@core/constants/scraper.const';
 
 @Component({
   selector: 'app-scraper-form',

@@ -5,12 +5,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { JobsStore } from '../../../core/store/jobs.store';
-import { JobsService } from '../../../core/services/jobs.service';
-import { UserCvService } from '../../../core/services/user-cv.service';
-import { ToastService } from '../../../core/services/toast.service';
-import { Job } from '../../../core/models/job.model';
-import { UserCv } from '../../../core/models/user-cv.model';
+import { JobsStore } from '@core/store/jobs.store';
+import { JobsService } from '@core/services/jobs.service';
+import { UserCvService } from '@core/services/user-cv.service';
+import { ToastService } from '@core/services/toast.service';
+import { Job } from '@core/models/job.model';
+import { UserCv } from '@core/models/user-cv.model';
 import { JobDetailFormComponent } from './components/job-detail-form.component';
 import { JobReviewComponent } from './components/job-review.component';
 
