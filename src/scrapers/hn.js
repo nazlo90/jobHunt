@@ -45,21 +45,17 @@ export async function scrapeHN() {
       if (score < 0) continue;
 
       results.push({
-        scrape_id: scrapeId(role, company),
+        scrapeId: scrapeId(role, company),
         company,
         role,
         salary: '',
-        salary_raw: 0,
+        salaryRaw: 0,
         url: `https://news.ycombinator.com/item?id=${threadId}`,
         location: 'Remote',
-        tech_stack: '',
-        status: 'Bookmarked',
-        priority: Math.min(5, Math.max(1, score + 2)),
-        applied_date: '',
-        contact: '',
-        notes: '',
+        techStack: '',
         source: 'hackernews',
-        description_preview: clean.slice(0, 500),
+        descriptionPreview: clean.slice(0, 500),
+        score,
       });
     }
   } catch (err) {

@@ -4,44 +4,59 @@ import { scrapeId, scoreJob, extractSalary, stripHtml, CONFIG } from './utils.js
 
 export async function scrapeRemoteOK() {
   const results = [];
+  const seen = new Set();
+
+  // Build category URLs from profile; fall back to generic remote-jobs if none configured
+  const categories = CONFIG.remoteOKCategories.length > 0
+    ? CONFIG.remoteOKCategories
+    : ['jobs'];
+  const urls = categories.map(cat =>
+    cat === 'jobs'
+      ? 'https://remoteok.com/remote-jobs.json'
+      : `https://remoteok.com/remote-${encodeURIComponent(cat)}-jobs.json`
+  );
+
+  for (const url of urls) {
   try {
-    const res = await fetch('https://remoteok.com/remote-frontend-jobs.json', {
+    const res = await fetch(url, {
       headers: { 'User-Agent': 'JobHuntBot/1.0' },
       timeout: 10000,
     });
-    if (!res.ok) return results;
+    if (!res.ok) continue;
 
     const jobs = await res.json();
 
     for (const job of jobs.slice(1, 30)) { // index 0 is metadata
       if (!job.position || !job.company) continue;
+
+      const id = scrapeId(job.position, job.company);
+      if (seen.has(id)) continue;
+      seen.add(id);
+
       const score = scoreJob(job.position, job.description || '');
       if (score < 0) continue;
 
-      const id = scrapeId(job.position, job.company);
       const { salary, salaryRaw } = extractSalary(`${job.salary_min || ''} ${job.salary_max || ''}`);
       if (CONFIG.minSalary > 0 && salaryRaw > 0 && salaryRaw < CONFIG.minSalary) continue;
 
       results.push({
-        scrape_id: id,
+        scrapeId: id,
         company: job.company,
         role: job.position,
         salary: job.salary_min ? `$${Number(job.salary_min).toLocaleString()}–$${Number(job.salary_max).toLocaleString()}` : '',
-        salary_raw: job.salary_min || 0,
+        salaryRaw: job.salary_min || 0,
         url: job.url || `https://remoteok.com/l/${job.slug}`,
         location: 'Remote',
-        tech_stack: (job.tags || []).join(', '),
-        status: 'Bookmarked',
-        priority: Math.min(5, Math.max(1, score + 2)),
-        applied_date: '',
-        contact: '',
-        notes: '',
+        techStack: (job.tags || []).join(', '),
         source: 'remoteok',
-        description_preview: stripHtml(job.description || '').slice(0, 500),
+        descriptionPreview: stripHtml(job.description || '').slice(0, 500),
+        score,
       });
     }
   } catch (err) {
-    console.error(`  ✗ RemoteOK error: ${err.message}`);
+    console.error(`  ✗ RemoteOK error (${url}): ${err.message}`);
   }
+  }
+
   return results;
 }

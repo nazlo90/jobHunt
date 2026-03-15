@@ -40,21 +40,17 @@ export async function scrapeGreenhouse(company) {
       if (score < 0) continue;
 
       results.push({
-        scrape_id: scrapeId(role, companyName),
+        scrapeId: scrapeId(role, companyName),
         company: companyName,
         role,
         salary: '',
-        salary_raw: 0,
+        salaryRaw: 0,
         url: job.absolute_url,
         location: job.location?.name || '',
-        tech_stack: '',
-        status: 'Bookmarked',
-        priority: Math.min(5, Math.max(1, score + 2)),
-        applied_date: '',
-        contact: '',
-        notes: '',
+        techStack: '',
         source: 'greenhouse',
-        description_preview: description.slice(0, 500),
+        descriptionPreview: description.slice(0, 500),
+        score,
       });
 
       // Rate limiting - shorter delay

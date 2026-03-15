@@ -1,11 +1,12 @@
 // src/scrapers/remotive.js
 import fetch from 'node-fetch';
-import { scrapeId, scoreJob, stripHtml } from './utils.js';
+import { scrapeId, scoreJob, stripHtml, CONFIG } from './utils.js';
 
 export async function scrapeRemotive() {
   const results = [];
   try {
-    const res = await fetch('https://remotive.com/api/remote-jobs?category=software-dev&limit=50');
+    const category = CONFIG.remotiveCategory || 'software-dev';
+    const res = await fetch(`https://remotive.com/api/remote-jobs?category=${encodeURIComponent(category)}&limit=50`);
     const data = await res.json();
 
     for (const job of data.jobs) {
@@ -19,21 +20,17 @@ export async function scrapeRemotive() {
       const id = scrapeId(role, company);
 
       results.push({
-        scrape_id: id,
+        scrapeId: id,
         company,
         role,
         salary: job.salary || '',
-        salary_raw: 0,
+        salaryRaw: 0,
         url: job.url,
         location: 'Remote',
-        tech_stack: (job.tags || []).join(', '),
-        status: 'Bookmarked',
-        priority: Math.min(5, Math.max(1, score + 2)),
-        applied_date: '',
-        contact: '',
-        notes: '',
+        techStack: (job.tags || []).join(', '),
         source: 'remotive',
-        description_preview: desc.slice(0, 500),
+        descriptionPreview: desc.slice(0, 500),
+        score,
       });
     }
   } catch (err) {

@@ -1,18 +1,17 @@
 // src/scrapers/dou.js
 import fetch from 'node-fetch';
-import { scrapeId, scoreJob, extractSalary, stripHtml } from './utils.js';
+import { scrapeId, scoreJob, extractSalary, stripHtml, CONFIG } from './utils.js';
 
-// DOU.ua RSS feeds for frontend categories
-const DOU_FEEDS = [
-  'https://jobs.dou.ua/vacancies/feeds/?cat=Front+End',
-  'https://jobs.dou.ua/vacancies/feeds/?cat=JavaScript',
-];
+const DOU_BASE = 'https://jobs.dou.ua/vacancies/feeds/?cat=';
 
 export async function scrapeDOU() {
   const results = [];
   const seen = new Set();
 
-  for (const feedUrl of DOU_FEEDS) {
+  const feeds = CONFIG.douCategories.map(cat => `${DOU_BASE}${encodeURIComponent(cat)}`);
+  if (feeds.length === 0) return results;
+
+  for (const feedUrl of feeds) {
     try {
       const res = await fetch(feedUrl, {
         headers: { 'User-Agent': 'JobHuntBot/1.0' },
@@ -64,21 +63,17 @@ export async function scrapeDOU() {
         const { salary, salaryRaw } = extractSalary(summary);
 
         results.push({
-          scrape_id: id,
+          scrapeId: id,
           company,
           role,
           salary,
-          salary_raw: salaryRaw,
+          salaryRaw,
           url: link,
           location: 'Remote',
-          tech_stack: '',
-          status: 'Bookmarked',
-          priority: Math.min(5, Math.max(1, score + 2)),
-          applied_date: '',
-          contact: '',
-          notes: '',
+          techStack: '',
           source: 'dou',
-          description_preview: summary.slice(0, 500),
+          descriptionPreview: summary.slice(0, 500),
+          score,
         });
       }
 

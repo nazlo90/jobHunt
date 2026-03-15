@@ -1,19 +1,25 @@
 // src/scrapers/wellfound.js
 import fetch from 'node-fetch';
-import { scrapeId, scoreJob, stripHtml } from './utils.js';
+import { scrapeId, scoreJob, stripHtml, CONFIG } from './utils.js';
 
 export async function scrapeWellfound() {
   const results = [];
+  const seen = new Set();
+
+  const roles = CONFIG.wellfoundRoles.length > 0 ? CONFIG.wellfoundRoles : [];
+  if (roles.length === 0) return results;
+
+  for (const role of roles) {
   try {
-    const url = 'https://wellfound.com/jobs/search?role%5B%5D=Frontend+Engineer&remote=true';
-    // Wellfound doesn't have a free public API, but their job listings are indexable
-    // This fetches their sitemap/RSS if available
-    const rssUrl = 'https://wellfound.com/jobs.rss?role%5B%5D=Frontend+Engineer&remote=true';
+    const params = new URLSearchParams();
+    params.append('role[]', role);
+    params.set('remote', 'true');
+    const rssUrl = `https://wellfound.com/jobs.rss?${params}`;
     const res = await fetch(rssUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
       timeout: 10000,
     });
-    if (!res.ok) return results;
+    if (!res.ok) continue;
 
     const xml = await res.text();
     const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
@@ -28,32 +34,34 @@ export async function scrapeWellfound() {
       const desc  = stripHtml(get('description'));
 
       // Parse "Role — Company" format
-      const [role, company] = title.split(/\s+[—\-–]\s+/).map(s => s.trim());
-      if (!role || !company) continue;
+      const [jobRole, company] = title.split(/\s+[—\-–]\s+/).map(s => s.trim());
+      if (!jobRole || !company) continue;
 
-      const score = scoreJob(role, desc);
+      const id = scrapeId(jobRole, company);
+      if (seen.has(id)) continue;
+      seen.add(id);
+
+      const score = scoreJob(jobRole, desc);
       if (score < 0) continue;
 
       results.push({
-        scrape_id: scrapeId(role, company),
+        scrapeId: id,
         company,
-        role,
+        role: jobRole,
         salary: '',
-        salary_raw: 0,
+        salaryRaw: 0,
         url: link,
         location: 'Remote',
-        tech_stack: '',
-        status: 'Bookmarked',
-        priority: Math.min(5, Math.max(1, score + 2)),
-        applied_date: '',
-        contact: '',
-        notes: '',
+        techStack: '',
         source: 'wellfound',
-        description_preview: desc.slice(0, 500),
+        descriptionPreview: desc.slice(0, 500),
+        score,
       });
     }
   } catch (err) {
-    console.error(`  ✗ Wellfound error: ${err.message}`);
+    console.error(`  ✗ Wellfound error (${role}): ${err.message}`);
   }
+  }
+
   return results;
 }

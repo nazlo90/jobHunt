@@ -60,6 +60,10 @@ export class JobsService {
       qb.andWhere('job.source = :source', { source: query.source });
     }
 
+    if (query.minPriority && query.minPriority > 1) {
+      qb.andWhere('job.priority >= :minPriority', { minPriority: query.minPriority });
+    }
+
     const [col, dir] = ORDER_MAP[query.sortBy ?? 'created_at'] ?? ORDER_MAP['created_at'];
     qb.orderBy(col, dir).skip(skip).take(limit);
 

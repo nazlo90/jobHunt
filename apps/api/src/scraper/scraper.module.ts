@@ -4,10 +4,10 @@ import { Job } from '../database/entities/job.entity';
 import { ScraperController } from './scraper.controller';
 import { ScraperService } from './scraper.service';
 import { ScraperScheduler } from './scraper.scheduler';
-import { ScraperConfigModule } from '../scraper-config/scraper-config.module';
+import { ScraperProfileModule } from '../scraper-profile/scraper-profile.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Job]), ScraperConfigModule],
+  imports: [TypeOrmModule.forFeature([Job]), ScraperProfileModule],
   controllers: [ScraperController],
   providers: [ScraperService, ScraperScheduler],
   exports: [ScraperService],

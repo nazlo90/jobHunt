@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Job } from '../database/entities/job.entity';
-import { ScraperConfigService } from '../scraper-config/scraper-config.service';
+import { ScraperProfileService } from '../scraper-profile/scraper-profile.service';
 
 export interface ScrapedJob {
   scrapeId: string;
@@ -15,6 +15,7 @@ export interface ScrapedJob {
   techStack?: string;
   source: string;
   descriptionPreview?: string;
+  score?: number;
 }
 
 export interface ScraperRun {
@@ -27,33 +28,34 @@ export interface ScraperRun {
   errors: string[];
 }
 
-const GREENHOUSE_COMPANIES = [
-  'stripe', 'airbnb', 'notion', 'figma',
-  'coinbase', 'discord', 'openai', 'shopify',
-];
-
 @Injectable()
 export class ScraperService {
   private readonly logger = new Logger(ScraperService.name);
   private lastRun: ScraperRun | null = null;
   private running = false;
+  private stopRequested = false;
 
   constructor(
     @InjectRepository(Job)
     private readonly jobsRepo: Repository<Job>,
-    private readonly configService: ScraperConfigService,
+    private readonly configService: ScraperProfileService,
   ) {}
 
   getStatus() {
     return { running: this.running, lastRun: this.lastRun };
   }
 
-  async run(): Promise<ScraperRun> {
+  stop() {
+    if (this.running) this.stopRequested = true;
+  }
+
+  async run(profileId?: number): Promise<ScraperRun> {
     if (this.running) {
       return { ...this.lastRun!, startedAt: this.lastRun!.startedAt };
     }
 
     this.running = true;
+    this.stopRequested = false;
     const run: ScraperRun = {
       startedAt: new Date(),
       total: 0,
@@ -68,11 +70,27 @@ export class ScraperService {
     try {
       const scrapers = await import('../../../../src/scrapers/index.js' as any);
       const utils    = await import('../../../../src/scrapers/utils.js' as any);
-      const CONFIG   = await this.configService.get();
-      utils.setConfig(CONFIG);
+      const profile  = profileId
+        ? await this.configService.getById(profileId)
+        : await this.configService.getActive();
+      this.logger.log(`Using profile: "${profile.name}" (id=${profile.id})`);
+
+      // Pass only scraper-relevant fields so module-level CONFIG stays clean
+      utils.setConfig({
+        searchTerms:        profile.searchTerms,
+        minSalary:          profile.minSalary,
+        remoteOnly:         profile.remoteOnly,
+        strongKeywords:     profile.strongKeywords,
+        additionalKeywords: profile.additionalKeywords,
+        excludeTitle:       profile.excludeTitle,
+        excludeKeywords:    profile.excludeKeywords,
+        requireStrongMatch: profile.requireStrongMatch,
+        minScore:           profile.minScore,
+        sourceConfig:       profile.sourceConfig ?? {},
+      });
 
       const allJobs: ScrapedJob[] = [];
-      const enabled: string[] = CONFIG.enabledSources ?? [];
+      const enabled: string[] = profile.enabledSources ?? [];
       const isEnabled = (name: string) => enabled.length === 0 || enabled.includes(name);
 
       const runners = [
@@ -89,6 +107,7 @@ export class ScraperService {
       ];
 
       for (const runner of runners) {
+        if (this.stopRequested) { this.logger.log('Scraper stopped by user'); break; }
         if (!isEnabled(runner.name)) {
           this.logger.log(`${runner.name}: skipped (disabled)`);
           continue;
@@ -103,8 +122,9 @@ export class ScraperService {
         }
       }
 
-      if (isEnabled('LinkedIn')) {
-        for (const term of CONFIG.searchTerms) {
+      if (!this.stopRequested && isEnabled('LinkedIn')) {
+        for (const term of profile.searchTerms) {
+          if (this.stopRequested) { this.logger.log('Scraper stopped by user'); break; }
           try {
             const jobs = await scrapers.scrapeLinkedIn(term);
             this.logger.log(`LinkedIn "${term}": ${jobs.length} jobs`);
@@ -115,8 +135,10 @@ export class ScraperService {
         }
       }
 
-      if (isEnabled('Greenhouse')) {
-        for (const company of GREENHOUSE_COMPANIES) {
+      if (!this.stopRequested && isEnabled('Greenhouse')) {
+        const greenhouseCompanies: string[] = profile.sourceConfig?.greenhouseCompanies ?? [];
+        for (const company of greenhouseCompanies) {
+          if (this.stopRequested) { this.logger.log('Scraper stopped by user'); break; }
           try {
             const jobs = await scrapers.scrapeGreenhouse(company);
             this.logger.log(`Greenhouse ${company}: ${jobs.length} jobs`);
@@ -140,6 +162,14 @@ export class ScraperService {
     }
 
     return run;
+  }
+
+  private rawScoreToPriority(score: number): number {
+    if (score <= 0) return 1;
+    if (score <= 2) return 2;
+    if (score <= 4) return 3;
+    if (score <= 6) return 4;
+    return 5;
   }
 
   private async upsertJobs(rawJobs: ScrapedJob[], run: ScraperRun): Promise<void> {
@@ -206,7 +236,7 @@ export class ScraperService {
           source:             scraped.source,
           descriptionPreview: scraped.descriptionPreview ?? '',
           status:             'New',
-          priority:           3,
+          priority:           this.rawScoreToPriority(scraped.score ?? 0),
         }));
         run.inserted++;
       } else if (existing.status === 'New') {

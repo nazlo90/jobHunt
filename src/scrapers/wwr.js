@@ -1,11 +1,14 @@
 // src/scrapers/wwr.js
 import fetch from 'node-fetch';
-import { scrapeId, scoreJob, stripHtml } from './utils.js';
+import { scrapeId, scoreJob, stripHtml, CONFIG } from './utils.js';
 
 export async function scrapeWWR() {
   const results = [];
+  const wwrCategory = CONFIG.wwrCategory;
+  if (!wwrCategory) return results;
+
   try {
-    const res = await fetch('https://weworkremotely.com/categories/remote-programming-jobs.rss');
+    const res = await fetch(`https://weworkremotely.com/categories/${encodeURIComponent(wwrCategory)}.rss`);
     const xml = await res.text();
 
     const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
@@ -27,21 +30,17 @@ export async function scrapeWWR() {
       if (score < 0) continue;
 
       results.push({
-        scrape_id: scrapeId(role, company),
+        scrapeId: scrapeId(role, company),
         company,
         role,
         salary: '',
-        salary_raw: 0,
+        salaryRaw: 0,
         url: link,
         location: 'Remote',
-        tech_stack: '',
-        status: 'Bookmarked',
-        priority: Math.min(5, Math.max(1, score + 2)),
-        applied_date: '',
-        contact: '',
-        notes: '',
+        techStack: '',
         source: 'weworkremotely',
-        description_preview: desc.slice(0, 500),
+        descriptionPreview: desc.slice(0, 500),
+        score,
       });
     }
   } catch (err) {

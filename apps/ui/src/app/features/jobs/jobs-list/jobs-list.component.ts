@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, DestroyRef } from '@angular/core';
+import { Component, OnInit, inject, DestroyRef, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
@@ -11,9 +11,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDividerModule } from '@angular/material/divider';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { JobsStore } from '../../../core/store/jobs.store';
-import { JOB_STATUSES } from '../../../core/models/job.model';
+import { JOB_STATUSES, JobStatus } from '../../../core/models/job.model';
 
 @Component({
   selector: 'app-jobs-list',
@@ -22,7 +25,7 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
     CommonModule, RouterLink, FormsModule, ReactiveFormsModule,
     MatTableModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatChipsModule, MatProgressBarModule,
-    MatPaginatorModule,
+    MatPaginatorModule, MatCheckboxModule, MatTooltipModule, MatDividerModule,
   ],
   template: `
     <div class="jobs-list">
@@ -61,6 +64,16 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
         </mat-form-field>
 
         <mat-form-field appearance="outline">
+          <mat-label>Min Stars</mat-label>
+          <mat-select [(ngModel)]="selectedMinPriority" (ngModelChange)="onFilterChange()">
+            <mat-option [value]="0">Any</mat-option>
+            @for (p of [1,2,3,4,5]; track p) {
+              <mat-option [value]="p">{{ '★'.repeat(p) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
           <mat-label>Sort by</mat-label>
           <mat-select [(ngModel)]="selectedSort" (ngModelChange)="onFilterChange()">
             <mat-option value="created_at">Date Added</mat-option>
@@ -76,7 +89,53 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
         <mat-progress-bar mode="indeterminate"></mat-progress-bar>
       }
 
+      <!-- Bulk actions toolbar -->
+      @if (store.selectedIds().length > 0) {
+        <div class="bulk-toolbar">
+          <span class="sel-count">{{ store.selectedIds().length }} selected</span>
+          <mat-divider vertical></mat-divider>
+
+          <mat-form-field appearance="outline" class="bulk-status-field">
+            <mat-label>Set status</mat-label>
+            <mat-select [(ngModel)]="bulkStatusValue" (ngModelChange)="bulkChangeStatus($event)">
+              @for (s of statuses; track s) {
+                <mat-option [value]="s">{{ s }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <button mat-stroked-button color="primary" (click)="exportCsv()" matTooltip="Export selected to CSV">
+            <mat-icon>download</mat-icon> Export CSV
+          </button>
+
+          <button mat-flat-button class="bulk-delete-btn" (click)="bulkDelete()" matTooltip="Delete selected">
+            <mat-icon>delete</mat-icon> Delete
+          </button>
+
+          <button mat-icon-button (click)="store.clearSelection()" matTooltip="Clear selection">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      }
+
       <table mat-table [dataSource]="store.jobs()" class="jobs-table mat-elevation-z1">
+
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef (click)="$event.stopPropagation()">
+            <mat-checkbox
+              [checked]="allSelected()"
+              [indeterminate]="someSelected()"
+              (change)="toggleSelectAll($event.checked)">
+            </mat-checkbox>
+          </th>
+          <td mat-cell *matCellDef="let job" (click)="$event.stopPropagation()">
+            <mat-checkbox
+              [checked]="isSelected(job.id)"
+              (change)="store.toggleSelection(job.id)">
+            </mat-checkbox>
+          </td>
+        </ng-container>
+
         <ng-container matColumnDef="priority">
           <th mat-header-cell *matHeaderCellDef>★</th>
           <td mat-cell *matCellDef="let job">
@@ -121,16 +180,6 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let job">
-            @if (job.status === 'New') {
-              <button mat-icon-button color="primary" (click)="saveJob(job.id, $event)"
-                      title="Save to favorites">
-                <mat-icon>bookmark_add</mat-icon>
-              </button>
-              <button mat-icon-button (click)="archiveJob(job.id, $event)"
-                      title="Archive (dismiss)">
-                <mat-icon>archive</mat-icon>
-              </button>
-            }
             <button mat-icon-button color="warn" (click)="deleteJob(job.id, $event)"
                     title="Delete job">
               <mat-icon>delete</mat-icon>
@@ -167,6 +216,40 @@ import { JOB_STATUSES } from '../../../core/models/job.model';
     .company-link { color: #3f51b5; text-decoration: none; font-weight: 500; }
     .company-link:hover { text-decoration: underline; }
     .priority-star { color: #ffc107; font-size: 12px; letter-spacing: -1px; }
+
+    .bulk-toolbar {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.08);
+      flex-wrap: nowrap;
+      z-index: 1000;
+      animation: slideUp 0.18s ease;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .sel-count {
+      font-weight: 700;
+      font-size: 14px;
+      color: #3f51b5;
+      white-space: nowrap;
+      padding: 0 4px;
+    }
+    .bulk-toolbar mat-divider { height: 28px; margin: 0 6px; }
+    .bulk-status-field { margin-bottom: -1.25em; width: 160px; }
+    .bulk-toolbar button { white-space: nowrap; }
+    .bulk-delete-btn { background: #e53935 !important; color: #fff !important; }
+    .bulk-delete-btn mat-icon { color: #fff !important; }
+    .bulk-delete-btn:hover { background: #c62828 !important; }
   `],
 })
 export class JobsListComponent implements OnInit {
@@ -176,14 +259,39 @@ export class JobsListComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly statuses = JOB_STATUSES;
-  readonly displayedColumns = ['priority', 'company', 'role', 'status', 'salary', 'source', 'createdAt', 'actions'];
+  readonly displayedColumns = ['select', 'priority', 'company', 'role', 'status', 'salary', 'source', 'createdAt', 'actions'];
 
   searchCtrl = new FormControl('');
   selectedStatus = 'New';
   selectedSource = '';
   selectedSort = 'created_at';
+  selectedMinPriority = 0;
   pageSize = 25;
   pageIndex = 0;
+  bulkStatusValue: JobStatus | null = null;
+
+  readonly allSelected = computed(() => {
+    const jobs = this.store.jobs();
+    const ids = this.store.selectedIds();
+    return jobs.length > 0 && jobs.every((j) => ids.includes(j.id));
+  });
+
+  readonly someSelected = computed(() => {
+    const ids = this.store.selectedIds();
+    return ids.length > 0 && !this.allSelected();
+  });
+
+  isSelected(id: number): boolean {
+    return this.store.selectedIds().includes(id);
+  }
+
+  toggleSelectAll(checked: boolean): void {
+    if (checked) {
+      this.store.selectAll(this.store.jobs().map((j) => j.id));
+    } else {
+      this.store.clearSelection();
+    }
+  }
 
   ngOnInit() {
     const params = this.route.snapshot.queryParams;
@@ -191,16 +299,16 @@ export class JobsListComponent implements OnInit {
     this.selectedStatus = params['status'] ?? 'New';
     this.selectedSource = params['source'] ?? '';
     this.selectedSort = params['sortBy'] ?? 'created_at';
+    this.selectedMinPriority = Number(params['minPriority'] ?? 0);
     this.pageSize = Number(params['limit'] ?? 25);
     this.pageIndex = Math.max(0, Number(params['page'] ?? 1) - 1);
 
-    // Load data without navigating — URL params are already correct on initial load.
-    // Calling router.navigate() here would abort the in-flight route transition.
     this.store.loadJobs({
       search: this.searchCtrl.value || undefined,
       status: this.selectedStatus || undefined,
       source: this.selectedSource || undefined,
       sortBy: this.selectedSort,
+      minPriority: this.selectedMinPriority || undefined,
       page: this.pageIndex + 1,
       limit: this.pageSize,
     });
@@ -233,6 +341,7 @@ export class JobsListComponent implements OnInit {
       status: this.selectedStatus || undefined,
       source: this.selectedSource || undefined,
       sortBy: this.selectedSort,
+      minPriority: this.selectedMinPriority || undefined,
       page: this.pageIndex + 1,
       limit: this.pageSize,
     };
@@ -244,6 +353,7 @@ export class JobsListComponent implements OnInit {
         status: filters.status ?? null,
         source: filters.source ?? null,
         sortBy: filters.sortBy !== 'created_at' ? filters.sortBy : null,
+        minPriority: filters.minPriority ?? null,
         page: filters.page > 1 ? filters.page : null,
         limit: filters.limit !== 25 ? filters.limit : null,
       },
@@ -254,6 +364,7 @@ export class JobsListComponent implements OnInit {
     this.store.loadJobs(filters);
   }
 
+  // Single-row actions
   deleteJob(id: number, event: Event) {
     event.stopPropagation();
     if (confirm('Delete this job?')) {
@@ -269,6 +380,50 @@ export class JobsListComponent implements OnInit {
   archiveJob(id: number, event: Event) {
     event.stopPropagation();
     this.store.updateJob(id, { status: 'Archived' });
+  }
+
+  // Bulk actions
+  bulkDelete() {
+    const ids = this.store.selectedIds();
+    if (confirm(`Delete ${ids.length} job(s)?`)) {
+      this.store.bulkDelete(ids);
+    }
+  }
+
+  bulkSave() {
+    this.store.bulkUpdateStatus(this.store.selectedIds(), 'Saved');
+  }
+
+  bulkArchive() {
+    this.store.bulkUpdateStatus(this.store.selectedIds(), 'Archived');
+  }
+
+  bulkChangeStatus(status: JobStatus) {
+    this.store.bulkUpdateStatus(this.store.selectedIds(), status);
+    this.bulkStatusValue = null;
+  }
+
+  exportCsv() {
+    const ids = new Set(this.store.selectedIds());
+    const rows = this.store.jobs().filter((j) => ids.has(j.id));
+    const headers = ['id', 'company', 'role', 'status', 'salary', 'source', 'location', 'url', 'createdAt'];
+    const csv = [
+      headers.join(','),
+      ...rows.map((j) =>
+        headers.map((h) => {
+          const val = (j as unknown as Record<string, unknown>)[h] ?? '';
+          return `"${String(val).replace(/"/g, '""')}"`;
+        }).join(',')
+      ),
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `jobs-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   statusClass(status: string): string {

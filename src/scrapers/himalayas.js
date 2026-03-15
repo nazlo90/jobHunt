@@ -43,21 +43,17 @@ export async function scrapeHimalayas() {
         const tags = (job.categories || []).concat(job.tags || []);
 
         results.push({
-          scrape_id: id,
+          scrapeId: id,
           company,
           role,
           salary,
-          salary_raw: salaryRaw,
+          salaryRaw,
           url: job.url || '',
           location: job.timezone || job.location || 'Remote',
-          tech_stack: tags.join(', '),
-          status: 'Bookmarked',
-          priority: Math.min(5, Math.max(1, score + 2)),
-          applied_date: '',
-          contact: '',
-          notes: '',
+          techStack: tags.join(', '),
           source: 'himalayas',
-          description_preview: desc.slice(0, 500),
+          descriptionPreview: desc.slice(0, 500),
+          score,
         });
       }
 

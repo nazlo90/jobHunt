@@ -7,6 +7,7 @@ import { CvsModule } from './cvs/cvs.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { McpModule } from './mcp/mcp.module';
 import { ScraperConfigModule } from './scraper-config/scraper-config.module';
+import { ScraperProfileModule } from './scraper-profile/scraper-profile.module';
 import { UserCvsModule } from './user-cvs/user-cvs.module';
 
 @Module({
@@ -18,6 +19,7 @@ import { UserCvsModule } from './user-cvs/user-cvs.module';
     CvsModule,
     ScraperModule,
     ScraperConfigModule,
+    ScraperProfileModule,
     UserCvsModule,
     McpModule,
   ],

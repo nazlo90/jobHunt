@@ -9,9 +9,9 @@ import {
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { tapResponse } from '@ngrx/operators';
-import { pipe, switchMap, tap, debounceTime, distinctUntilChanged, interval, Subscription } from 'rxjs';
+import { pipe, switchMap, tap, debounceTime, distinctUntilChanged, interval, Subscription, forkJoin } from 'rxjs';
 import { takeWhile } from 'rxjs/operators';
-import { Job, JobStats } from '../models/job.model';
+import { Job, JobStats, JobStatus } from '../models/job.model';
 import { environment } from '../../../environments/environment';
 
 export interface ScraperStatus {
@@ -34,6 +34,7 @@ export interface JobFilters {
   sortBy?: string;
   page?: number;
   limit?: number;
+  minPriority?: number;
 }
 
 interface JobsState {
@@ -45,6 +46,8 @@ interface JobsState {
   total: number;
   error: string | null;
   scraperStatus: ScraperStatus | null;
+  scraperStopping: boolean;
+  selectedIds: number[];
 }
 
 const initialState: JobsState = {
@@ -56,19 +59,22 @@ const initialState: JobsState = {
   total: 0,
   error: null,
   scraperStatus: null,
+  scraperStopping: false,
+  selectedIds: [],
 };
 
 export const JobsStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
 
-  withComputed(({ total, stats, scraperStatus }) => ({
+  withComputed(({ total, stats, scraperStatus, scraperStopping }) => ({
     totalJobs: computed(() => total()),
     sources: computed(() => (stats()?.bySource ?? []).map((s) => s.source).sort()),
     pipeline: computed(() => stats()?.pipeline ?? 0),
     offers: computed(() => stats()?.offers ?? 0),
     thisWeek: computed(() => stats()?.thisWeek ?? 0),
     scraperRunning: computed(() => scraperStatus()?.running ?? false),
+    scraperStopping: computed(() => scraperStopping()),
   })),
 
   withMethods((store, http = inject(HttpClient)) => {
@@ -86,12 +92,13 @@ export const JobsStore = signalStore(
       // Reload jobs directly (bypasses distinctUntilChanged) to show newly scraped jobs
       const filters = store.filters();
       let params = new HttpParams();
-      if (filters.status)  params = params.set('status', filters.status);
-      if (filters.source)  params = params.set('source', filters.source);
-      if (filters.search)  params = params.set('search', filters.search);
-      if (filters.sortBy)  params = params.set('sortBy', filters.sortBy);
-      if (filters.page)    params = params.set('page', String(filters.page));
-      if (filters.limit)   params = params.set('limit', String(filters.limit));
+      if (filters.status)      params = params.set('status', filters.status);
+      if (filters.source)      params = params.set('source', filters.source);
+      if (filters.search)      params = params.set('search', filters.search);
+      if (filters.sortBy)      params = params.set('sortBy', filters.sortBy);
+      if (filters.page)        params = params.set('page', String(filters.page));
+      if (filters.limit)       params = params.set('limit', String(filters.limit));
+      if (filters.minPriority) params = params.set('minPriority', String(filters.minPriority));
 
       http.get<{ ok: boolean; jobs: Job[]; total: number }>(`${base}/jobs`, { params }).pipe(
         tapResponse({
@@ -107,7 +114,7 @@ export const JobsStore = signalStore(
         switchMap(() => http.get<ScraperStatus & { ok: boolean }>(`${base}/scraper/status`)),
         tap((s) => patchState(store, { scraperStatus: s })),
         takeWhile((s) => s.running, true),
-      ).subscribe({ complete: () => reloadData() });
+      ).subscribe({ complete: () => { patchState(store, { scraperStopping: false }); reloadData(); } });
     }
 
     return {
@@ -115,22 +122,24 @@ export const JobsStore = signalStore(
         pipe(
           debounceTime(150),
           distinctUntilChanged((a, b) =>
-            a.status   === b.status  &&
-            a.source   === b.source  &&
-            a.search   === b.search  &&
-            a.sortBy   === b.sortBy  &&
-            a.page     === b.page    &&
-            a.limit    === b.limit
+            a.status      === b.status      &&
+            a.source      === b.source      &&
+            a.search      === b.search      &&
+            a.sortBy      === b.sortBy      &&
+            a.page        === b.page        &&
+            a.limit       === b.limit       &&
+            a.minPriority === b.minPriority
           ),
           tap((filters) => patchState(store, { loading: true, filters, error: null })),
           switchMap((filters) => {
             let params = new HttpParams();
-            if (filters.status)  params = params.set('status', filters.status);
-            if (filters.source)  params = params.set('source', filters.source);
-            if (filters.search)  params = params.set('search', filters.search);
-            if (filters.sortBy)  params = params.set('sortBy', filters.sortBy);
-            if (filters.page)    params = params.set('page', String(filters.page));
-            if (filters.limit)   params = params.set('limit', String(filters.limit));
+            if (filters.status)      params = params.set('status', filters.status);
+            if (filters.source)      params = params.set('source', filters.source);
+            if (filters.search)      params = params.set('search', filters.search);
+            if (filters.sortBy)      params = params.set('sortBy', filters.sortBy);
+            if (filters.page)        params = params.set('page', String(filters.page));
+            if (filters.limit)       params = params.set('limit', String(filters.limit));
+            if (filters.minPriority) params = params.set('minPriority', String(filters.minPriority));
 
             return http.get<{ ok: boolean; jobs: Job[]; total: number }>(`${base}/jobs`, { params }).pipe(
               tapResponse({
@@ -207,10 +216,65 @@ export const JobsStore = signalStore(
         ).subscribe();
       },
 
-      runScraper(): void {
+      stopScraper(): void {
+        patchState(store, { scraperStopping: true });
+        http.post(`${base}/scraper/stop`, {}).subscribe({
+          error: () => patchState(store, { scraperStopping: false }),
+        });
+      },
+
+      toggleSelection(id: number): void {
+        const current = store.selectedIds();
+        patchState(store, {
+          selectedIds: current.includes(id) ? current.filter((x) => x !== id) : [...current, id],
+        });
+      },
+
+      selectAll(ids: number[]): void {
+        patchState(store, { selectedIds: ids });
+      },
+
+      clearSelection(): void {
+        patchState(store, { selectedIds: [] });
+      },
+
+      bulkDelete(ids: number[]): void {
+        forkJoin(ids.map((id) => http.delete(`${base}/jobs/${id}`))).pipe(
+          tapResponse({
+            next: () => {
+              patchState(store, {
+                jobs: store.jobs().filter((j) => !ids.includes(j.id)),
+                total: store.total() - ids.length,
+                selectedIds: [],
+              });
+              reloadData();
+            },
+            error: (err: Error) => patchState(store, { error: err.message }),
+          }),
+        ).subscribe();
+      },
+
+      bulkUpdateStatus(ids: number[], status: JobStatus): void {
+        forkJoin(ids.map((id) => http.patch<{ ok: boolean; job: Job }>(`${base}/jobs/${id}`, { status }))).pipe(
+          tapResponse({
+            next: (results) => {
+              const updatedMap = new Map(results.map((r) => [r.job.id, r.job]));
+              const activeStatus = store.filters().status;
+              let jobs = store.jobs().map((j) => updatedMap.get(j.id) ?? j);
+              if (activeStatus) {
+                jobs = jobs.filter((j) => j.status === activeStatus);
+              }
+              patchState(store, { jobs, selectedIds: [] });
+            },
+            error: (err: Error) => patchState(store, { error: err.message }),
+          }),
+        ).subscribe();
+      },
+
+      runScraper(profileId?: number): void {
         // Optimistically mark as running so button disables immediately (before HTTP round-trip)
         patchState(store, { scraperStatus: { running: true, lastRun: store.scraperStatus()?.lastRun ?? null } });
-        http.post<{ ok: boolean; started: boolean }>(`${base}/scraper/run`, {}).pipe(
+        http.post<{ ok: boolean; started: boolean }>(`${base}/scraper/run`, profileId ? { profileId } : {}).pipe(
           tapResponse({
             next: () => startPolling(),
             error: () => patchState(store, { scraperStatus: { running: false, lastRun: store.scraperStatus()?.lastRun ?? null } }),

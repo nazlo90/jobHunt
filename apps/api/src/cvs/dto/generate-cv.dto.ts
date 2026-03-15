@@ -1,15 +1,20 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsObject } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class GenerateCvDto {
-  @IsOptional()
   @IsNumber()
+  @IsNotEmpty()
   @Type(() => Number)
-  jobId?: number;
+  userCvId: number;
 
   @IsString()
   @IsNotEmpty()
   jobDescription: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  jobId?: number;
 
   @IsOptional()
   @IsString()
@@ -18,17 +23,4 @@ export class GenerateCvDto {
   @IsOptional()
   @IsString()
   role?: string;
-
-  @IsOptional()
-  @IsObject()
-  masterCv?: object;
-
-  @IsOptional()
-  @IsString()
-  cvText?: string;
-
-  @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  userCvId?: number;
 }

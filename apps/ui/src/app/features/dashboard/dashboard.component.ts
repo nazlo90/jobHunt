@@ -1,15 +1,23 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { JobsStore } from '../../core/store/jobs.store';
+import { ScraperProfileService } from '../../core/services/scraper-profile.service';
+import { ScraperProfile } from '../../core/models/scraper-profile.model';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [
+    CommonModule, MatCardModule, MatButtonModule, MatIconModule,
+    MatProgressSpinnerModule, MatSelectModule, MatFormFieldModule, MatTooltipModule,
+  ],
   template: `
     <div class="dashboard">
       <div class="page-header">
@@ -86,14 +94,31 @@ import { JobsStore } from '../../core/store/jobs.store';
                 }
               }
             </mat-card-content>
-            <mat-card-actions>
-              <button mat-raised-button color="primary" (click)="store.runScraper()" [disabled]="store.scraperRunning()">
-                @if (store.scraperRunning()) {
-                  <span class="btn-content"><mat-spinner diameter="18"></mat-spinner>Running…</span>
-                } @else {
+            <mat-card-actions class="scraper-actions">
+              <mat-form-field appearance="outline" class="profile-select" subscriptSizing="dynamic">
+                <mat-label>Profile</mat-label>
+                <mat-select [(value)]="selectedProfileId">
+                  @for (p of profiles(); track p.id) {
+                    <mat-option [value]="p.id">
+                      {{ p.name }}
+                      @if (p.isActive) { <span class="active-dot"> ●</span> }
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              @if (store.scraperStopping()) {
+                <button mat-raised-button disabled>
+                  <span class="btn-content"><mat-spinner diameter="18"></mat-spinner>Stopping…</span>
+                </button>
+              } @else if (store.scraperRunning()) {
+                <button mat-raised-button color="warn" (click)="store.stopScraper()">
+                  <span class="btn-content"><mat-icon>stop</mat-icon>Stop</span>
+                </button>
+              } @else {
+                <button mat-raised-button color="primary" (click)="store.runScraper(selectedProfileId)">
                   <span class="btn-content"><mat-icon>refresh</mat-icon>Run Scraper</span>
-                }
-              </button>
+                </button>
+              }
             </mat-card-actions>
           </mat-card>
         </div>
@@ -131,12 +156,26 @@ import { JobsStore } from '../../core/store/jobs.store';
     }
     .breakdown-row:last-child { border-bottom: none; }
     .error-text { color: #f44336; font-size: 13px; }
+    .scraper-actions { display: flex; align-items: center; gap: 10px; padding: 8px 16px 12px; flex-wrap: wrap; }
+    .profile-select { width: 180px; }
+    .active-dot { color: #2e7d32; font-size: 10px; }
   `],
 })
 export class DashboardComponent implements OnInit {
   readonly store = inject(JobsStore);
+  private readonly profileSvc = inject(ScraperProfileService);
+
+  profiles = signal<ScraperProfile[]>([]);
+  selectedProfileId: number | undefined = undefined;
 
   ngOnInit() {
     this.store.loadStats(undefined);
+    this.profileSvc.list().subscribe({
+      next: ({ profiles }) => {
+        this.profiles.set(profiles);
+        const active = profiles.find(p => p.isActive) ?? profiles[0];
+        if (active) this.selectedProfileId = active.id;
+      },
+    });
   }
 }

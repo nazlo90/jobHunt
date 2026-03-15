@@ -13,13 +13,14 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { MatChipInputEvent } from '@angular/material/chips';
-import { MatDialog } from '@angular/material/dialog';
-import { ScraperConfigService } from '../../core/services/scraper-config.service';
+import { ScraperProfileService } from '../../core/services/scraper-profile.service';
 import { UserCvService } from '../../core/services/user-cv.service';
-import { ScraperConfig } from '../../core/models/scraper-config.model';
+import { ScraperProfile } from '../../core/models/scraper-profile.model';
 import { UserCv } from '../../core/models/user-cv.model';
 import { CvPreviewDialogComponent } from '../../shared/cv-preview-dialog/cv-preview-dialog.component';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -41,11 +42,12 @@ const ALL_SOURCES = [
   selector: 'app-settings',
   standalone: true,
   imports: [
-    ReactiveFormsModule,
+    ReactiveFormsModule, FormsModule,
     MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     MatChipsModule, MatSlideToggleModule, MatButtonModule,
     MatIconModule, MatSnackBarModule, MatProgressSpinnerModule,
-    MatDividerModule, MatListModule, FormsModule, MatTooltipModule,
+    MatDividerModule, MatListModule, MatTooltipModule,
+    MatMenuModule, MatDialogModule,
   ],
   template: `
     <div class="settings-container">
@@ -104,11 +106,74 @@ const ALL_SOURCES = [
 
       <mat-divider class="section-divider" />
 
-      @if (loading()) {
-        <div class="loading-wrap">
-          <mat-spinner diameter="40" />
-        </div>
-      } @else {
+      <!-- Profiles Section -->
+      <mat-card class="section-card profiles-card">
+        <mat-card-header>
+          <mat-card-title>Scraper Profiles</mat-card-title>
+          <mat-card-subtitle>Each profile has its own search terms, keywords, and filters. The active profile is used when you run the scraper.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (profilesLoading()) {
+            <div class="loading-wrap"><mat-spinner diameter="32" /></div>
+          } @else {
+            <div class="profiles-toolbar">
+              <!-- Profile selector -->
+              <mat-form-field appearance="outline" class="profile-select-field">
+                <mat-label>Profile</mat-label>
+                <mat-select [value]="selectedProfile()?.id" (selectionChange)="selectProfile($event.value)">
+                  @for (p of profiles(); track p.id) {
+                    <mat-option [value]="p.id">
+                      <span class="profile-option">
+                        {{ p.name }}
+                        @if (p.isActive) { <span class="active-dot" matTooltip="Active — used by scraper">●</span> }
+                      </span>
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <!-- Profile status badge -->
+              @if (selectedProfile()?.isActive) {
+                <span class="active-badge" matTooltip="This profile is used when you run the scraper">
+                  <mat-icon>check_circle</mat-icon> Active
+                </span>
+              } @else {
+                <button mat-stroked-button color="primary" (click)="activateProfile()" [disabled]="activating()">
+                  @if (activating()) { <mat-spinner diameter="16" /> } @else { Set as Active }
+                </button>
+              }
+
+              <span class="spacer"></span>
+
+              <!-- Profile actions menu -->
+              <button mat-icon-button [matMenuTriggerFor]="profileMenu" matTooltip="Profile actions">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #profileMenu="matMenu">
+                <button mat-menu-item (click)="promptNewProfile()">
+                  <mat-icon>add</mat-icon> New profile
+                </button>
+                <button mat-menu-item (click)="promptDuplicateProfile()">
+                  <mat-icon>content_copy</mat-icon> Duplicate current
+                </button>
+                <button mat-menu-item (click)="promptRenameProfile()"
+                        [disabled]="selectedProfile()?.name === 'Default'">
+                  <mat-icon>drive_file_rename_outline</mat-icon> Rename current
+                </button>
+                <mat-divider />
+                <button mat-menu-item (click)="deleteProfile()" class="delete-menu-item"
+                        [disabled]="profiles().length <= 1 || selectedProfile()?.isActive">
+                  <mat-icon color="warn">delete</mat-icon> Delete current
+                </button>
+              </mat-menu>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      @if (formLoading()) {
+        <div class="loading-wrap"><mat-spinner diameter="40" /></div>
+      } @else if (selectedProfile()) {
         <form [formGroup]="form" (ngSubmit)="save()">
 
           <mat-card class="section-card">
@@ -249,7 +314,7 @@ const ALL_SOURCES = [
     .page-header { margin-bottom: 24px; }
     .page-header h1 { margin: 0 0 4px; font-size: 24px; font-weight: 700; color: #1a1a2e; }
     .subtitle { margin: 0; color: #666; font-size: 14px; }
-    .loading-wrap { display: flex; justify-content: center; padding: 60px 0; }
+    .loading-wrap { display: flex; justify-content: center; padding: 40px 0; }
     .section-card { margin-bottom: 20px; }
     .section-card mat-card-content { padding-top: 12px; }
     .section-divider { margin: 8px 0 24px; }
@@ -270,10 +335,25 @@ const ALL_SOURCES = [
     .cv-item-actions { display: flex; align-items: center; }
     .empty-cvs { font-size: 13px; color: #aaa; font-style: italic; margin: 12px 0 4px; }
     .platforms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px 24px; padding-top: 4px; }
+
+    /* Profiles toolbar */
+    .profiles-card mat-card-content { padding-top: 16px; }
+    .profiles-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .profile-select-field { width: 260px; margin-bottom: -20px; }
+    .spacer { flex: 1; }
+    .active-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 13px; font-weight: 600; color: #2e7d32;
+      background: #e8f5e9; border-radius: 16px; padding: 4px 12px;
+    }
+    .active-badge mat-icon { font-size: 16px; width: 16px; height: 16px; }
+    .profile-option { display: flex; align-items: center; gap: 6px; }
+    .active-dot { color: #2e7d32; font-size: 10px; line-height: 1; }
+    .delete-menu-item mat-icon { color: #d32f2f; }
   `],
 })
 export class SettingsComponent implements OnInit {
-  private readonly configSvc = inject(ScraperConfigService);
+  private readonly profileSvc = inject(ScraperProfileService);
   private readonly userCvSvc = inject(UserCvService);
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
@@ -283,9 +363,14 @@ export class SettingsComponent implements OnInit {
   readonly priorityOptions = [1, 2, 3, 4, 5];
   readonly allSources = ALL_SOURCES;
 
-  loading = signal(true);
+  profilesLoading = signal(true);
+  formLoading = signal(false);
   saving = signal(false);
+  activating = signal(false);
   cvUploading = signal(false);
+
+  profiles = signal<ScraperProfile[]>([]);
+  selectedProfile = signal<ScraperProfile | null>(null);
   userCvs = signal<UserCv[]>([]);
   enabledSources = signal<string[]>([...ALL_SOURCES]);
   newCvName = '';
@@ -307,23 +392,120 @@ export class SettingsComponent implements OnInit {
 
   ngOnInit() {
     this.loadUserCvs();
-    this.configSvc.get().subscribe({
-      next: ({ config }) => {
-        this.form.patchValue({
-          minSalary: config.minSalary,
-          minScore: config.minScore,
-          remoteOnly: config.remoteOnly,
-          requireStrongMatch: config.requireStrongMatch,
-        });
-        for (const field of Object.keys(this.chips) as ArrayField[]) {
-          this.chips[field].set([...(config[field] as string[])]);
-        }
-        this.enabledSources.set(config.enabledSources ?? [...ALL_SOURCES]);
-        this.loading.set(false);
+    this.loadProfiles();
+  }
+
+  private loadProfiles() {
+    this.profileSvc.list().subscribe({
+      next: ({ profiles }) => {
+        this.profiles.set(profiles);
+        const active = profiles.find(p => p.isActive) ?? profiles[0] ?? null;
+        if (active) this.applyProfileToForm(active);
+        this.profilesLoading.set(false);
       },
       error: () => {
-        this.snackBar.open('Failed to load config', 'Close', { duration: 3000 });
-        this.loading.set(false);
+        this.snackBar.open('Failed to load profiles', 'Close', { duration: 3000 });
+        this.profilesLoading.set(false);
+      },
+    });
+  }
+
+  private applyProfileToForm(profile: ScraperProfile) {
+    this.selectedProfile.set(profile);
+    this.form.patchValue({
+      minSalary: profile.minSalary,
+      minScore: profile.minScore,
+      remoteOnly: profile.remoteOnly,
+      requireStrongMatch: profile.requireStrongMatch,
+    });
+    for (const field of Object.keys(this.chips) as ArrayField[]) {
+      this.chips[field].set([...(profile[field] as string[])]);
+    }
+    this.enabledSources.set(profile.enabledSources ?? [...ALL_SOURCES]);
+  }
+
+  selectProfile(id: number) {
+    const profile = this.profiles().find(p => p.id === id);
+    if (profile) this.applyProfileToForm(profile);
+  }
+
+  activateProfile() {
+    const profile = this.selectedProfile();
+    if (!profile) return;
+    this.activating.set(true);
+    this.profileSvc.activate(profile.id).subscribe({
+      next: ({ profile: updated }) => {
+        this.profiles.update(list => list.map(p => ({ ...p, isActive: p.id === updated.id })));
+        this.selectedProfile.set(updated);
+        this.snackBar.open(`"${updated.name}" is now active`, undefined, { duration: 2500 });
+        this.activating.set(false);
+      },
+      error: () => {
+        this.snackBar.open('Failed to activate profile', 'Close', { duration: 3000 });
+        this.activating.set(false);
+      },
+    });
+  }
+
+  promptNewProfile() {
+    const name = prompt('Profile name:');
+    if (!name?.trim()) return;
+    this.profileSvc.create(name.trim()).subscribe({
+      next: ({ profile }) => {
+        this.profiles.update(list => [...list, profile]);
+        this.applyProfileToForm(profile);
+        this.snackBar.open(`Profile "${profile.name}" created`, undefined, { duration: 2500 });
+      },
+      error: () => this.snackBar.open('Failed to create profile', 'Close', { duration: 3000 }),
+    });
+  }
+
+  promptRenameProfile() {
+    const profile = this.selectedProfile();
+    if (!profile) return;
+    const name = prompt('New profile name:', profile.name);
+    if (!name?.trim() || name.trim() === profile.name) return;
+    this.profileSvc.update(profile.id, { name: name.trim() }).subscribe({
+      next: ({ profile: updated }) => {
+        this.profiles.update(list => list.map(p => p.id === updated.id ? updated : p));
+        this.selectedProfile.set(updated);
+        this.snackBar.open(`Profile renamed to "${updated.name}"`, undefined, { duration: 2500 });
+      },
+      error: () => this.snackBar.open('Failed to rename profile', 'Close', { duration: 3000 }),
+    });
+  }
+
+  promptDuplicateProfile() {
+    const profile = this.selectedProfile();
+    if (!profile) return;
+    const name = prompt('Name for the duplicate:', `${profile.name} (copy)`);
+    if (!name?.trim()) return;
+    this.profileSvc.duplicate(profile.id, name.trim()).subscribe({
+      next: ({ profile: copy }) => {
+        this.profiles.update(list => [...list, copy]);
+        this.applyProfileToForm(copy);
+        this.snackBar.open(`Profile "${copy.name}" created`, undefined, { duration: 2500 });
+      },
+      error: () => this.snackBar.open('Failed to duplicate profile', 'Close', { duration: 3000 }),
+    });
+  }
+
+  deleteProfile() {
+    const profile = this.selectedProfile();
+    if (!profile) return;
+    if (!confirm(`Delete profile "${profile.name}"? This cannot be undone.`)) return;
+    this.profileSvc.delete(profile.id).subscribe({
+      next: () => {
+        const remaining = this.profiles().filter(p => p.id !== profile.id);
+        this.profiles.set(remaining);
+        const next = remaining.find(p => p.isActive) ?? remaining[0] ?? null;
+        if (next) this.applyProfileToForm(next);
+        else this.selectedProfile.set(null);
+        this.snackBar.open('Profile deleted', undefined, { duration: 2500 });
+      },
+      error: (err) => {
+        const msg = err?.error?.message ?? 'Failed to delete profile';
+        this.snackBar.open(msg, 'Close', { duration: 4000 });
       },
     });
   }
@@ -412,11 +594,12 @@ export class SettingsComponent implements OnInit {
   }
 
   save() {
-    if (this.form.invalid) return;
+    const profile = this.selectedProfile();
+    if (!profile || this.form.invalid) return;
     this.saving.set(true);
 
-    const payload: Partial<ScraperConfig> = {
-      ...this.form.value as Partial<ScraperConfig>,
+    const payload: Partial<ScraperProfile> = {
+      ...this.form.value as Partial<ScraperProfile>,
       searchTerms: this.chips['searchTerms'](),
       strongKeywords: this.chips['strongKeywords'](),
       additionalKeywords: this.chips['additionalKeywords'](),
@@ -425,13 +608,15 @@ export class SettingsComponent implements OnInit {
       enabledSources: this.enabledSources(),
     };
 
-    this.configSvc.update(payload).subscribe({
-      next: () => {
-        this.snackBar.open('Settings saved', undefined, { duration: 2500 });
+    this.profileSvc.update(profile.id, payload).subscribe({
+      next: ({ profile: updated }) => {
+        this.profiles.update(list => list.map(p => p.id === updated.id ? updated : p));
+        this.selectedProfile.set(updated);
+        this.snackBar.open('Profile saved', undefined, { duration: 2500 });
         this.saving.set(false);
       },
       error: () => {
-        this.snackBar.open('Failed to save settings', 'Close', { duration: 3000 });
+        this.snackBar.open('Failed to save profile', 'Close', { duration: 3000 });
         this.saving.set(false);
       },
     });

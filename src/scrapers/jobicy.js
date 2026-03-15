@@ -2,16 +2,17 @@
 import fetch from 'node-fetch';
 import { scrapeId, scoreJob, extractSalary, stripHtml, CONFIG } from './utils.js';
 
-// Tags to query — covers the main frontend keywords
-const TAGS = ['angular', 'typescript', 'react', 'frontend', 'javascript'];
-
 export async function scrapeJobicy() {
   const results = [];
   const seen = new Set();
 
-  for (const tag of TAGS) {
+  // Use profile's strongKeywords as Jobicy tags; limit to 5 to avoid rate-limiting
+  const tags = CONFIG.strongKeywords.slice(0, 5);
+  if (tags.length === 0) return results;
+
+  for (const tag of tags) {
     try {
-      const url = `https://jobicy.com/api/v2/remote-jobs?count=50&tag=${encodeURIComponent(tag)}`;
+      const url = `https://jobicy.com/api/v2/remote-jobs?count=50&tag=${encodeURIComponent(tag.toLowerCase())}`;
       const res = await fetch(url, {
         headers: { 'User-Agent': 'JobHuntBot/1.0' },
         timeout: 10000,
@@ -38,21 +39,17 @@ export async function scrapeJobicy() {
         if (CONFIG.minSalary > 0 && salaryRaw > 0 && salaryRaw < CONFIG.minSalary) continue;
 
         results.push({
-          scrape_id: id,
+          scrapeId: id,
           company,
           role,
           salary: job.jobSalary || salary,
-          salary_raw: salaryRaw,
+          salaryRaw,
           url: job.url || '',
           location: job.jobGeo || 'Anywhere',
-          tech_stack: (job.jobIndustry || []).join(', '),
-          status: 'Bookmarked',
-          priority: Math.min(5, Math.max(1, score + 2)),
-          applied_date: '',
-          contact: '',
-          notes: '',
+          techStack: (job.jobIndustry || []).join(', '),
           source: 'jobicy',
-          description_preview: desc.slice(0, 500),
+          descriptionPreview: desc.slice(0, 500),
+          score,
         });
       }
 

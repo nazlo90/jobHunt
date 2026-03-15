@@ -62,21 +62,17 @@ export async function scrapeLinkedIn(searchTerm) {
 
       const id = scrapeId(role, company);
       results.push({
-        scrape_id: id,
+        scrapeId: id,
         company,
         role,
         salary: '',
-        salary_raw: 0,
+        salaryRaw: 0,
         url: jobUrl,
         location,
-        tech_stack: '',
-        status: 'Bookmarked',
-        priority: Math.min(5, Math.max(1, score + 2)),
-        applied_date: '',
-        contact: '',
-        notes: '',
+        techStack: '',
         source: 'linkedin',
-        description_preview: description.slice(0, 500),
+        descriptionPreview: description.slice(0, 500),
+        score,
       });
 
       // Rate limiting

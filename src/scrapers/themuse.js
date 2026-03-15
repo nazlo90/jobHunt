@@ -3,15 +3,18 @@ import fetch from 'node-fetch';
 import { scrapeId, scoreJob, stripHtml, CONFIG } from './utils.js';
 
 const BASE = 'https://www.themuse.com/api/public/jobs';
-const CATEGORIES = ['Software Engineer', 'Data and Analytics'];
-const LEVELS = ['Senior Level', 'Management and Executive'];
 
 export async function scrapeTheMuse() {
   const results = [];
   const seen = new Set();
 
-  for (const category of CATEGORIES) {
-    for (const level of LEVELS) {
+  const categories = CONFIG.theMuseCategories.length > 0 ? CONFIG.theMuseCategories : [];
+  const levels = CONFIG.theMuseLevels.length > 0 ? CONFIG.theMuseLevels : [];
+
+  if (categories.length === 0 || levels.length === 0) return results;
+
+  for (const category of categories) {
+    for (const level of levels) {
       try {
         const params = new URLSearchParams({
           category,
@@ -50,21 +53,17 @@ export async function scrapeTheMuse() {
           const jobUrl = job.refs?.landing_page || '';
 
           results.push({
-            scrape_id: id,
+            scrapeId: id,
             company,
             role,
             salary: '',
-            salary_raw: 0,
+            salaryRaw: 0,
             url: jobUrl,
             location: job.locations?.map(l => l.name).join(', ') || 'Remote',
-            tech_stack: (job.categories || []).map(c => c.name).join(', '),
-            status: 'Bookmarked',
-            priority: Math.min(5, Math.max(1, score + 2)),
-            applied_date: '',
-            contact: '',
-            notes: '',
+            techStack: (job.categories || []).map(c => c.name).join(', '),
             source: 'themuse',
-            description_preview: desc.slice(0, 500),
+            descriptionPreview: desc.slice(0, 500),
+            score,
           });
         }
 

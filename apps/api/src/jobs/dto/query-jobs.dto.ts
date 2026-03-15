@@ -33,4 +33,11 @@ export class QueryJobsDto {
   @Min(1)
   @Max(100)
   limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  minPriority?: number;
 }
