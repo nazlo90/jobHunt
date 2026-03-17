@@ -24,7 +24,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public', 'browser'),
-      exclude: ['/api/(.*)'],
+      exclude: ['/api/{*path}'],
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     DatabaseModule,
