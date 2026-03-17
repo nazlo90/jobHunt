@@ -17,6 +17,7 @@ async function bootstrap() {
           imgSrc: ["'self'", 'data:', 'https:'],
           connectSrc: ["'self'"],
           fontSrc: ["'self'", 'https:', 'data:'],
+          upgradeInsecureRequests: null,
         },
       },
       crossOriginEmbedderPolicy: false,
