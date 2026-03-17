@@ -16,7 +16,6 @@ import { JobReviewComponent } from './components/job-review.component';
 
 @Component({
   selector: 'app-job-detail',
-  standalone: true,
   imports: [
     RouterLink,
     MatButtonModule, MatIconModule, MatTabsModule, MatProgressSpinnerModule,

@@ -21,7 +21,6 @@ import { buildCvHtml } from '@shared/cv-html.utils';
 
 @Component({
   selector: 'app-job-review',
-  standalone: true,
   imports: [
     RouterLink, DatePipe, FormsModule,
     MatButtonModule, MatIconModule, MatSelectModule, MatInputModule,

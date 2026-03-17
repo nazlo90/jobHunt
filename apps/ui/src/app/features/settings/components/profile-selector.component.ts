@@ -11,7 +11,6 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
 
 @Component({
   selector: 'app-profile-selector',
-  standalone: true,
   imports: [
     MatButtonModule, MatIconModule, MatSelectModule, MatFormFieldModule,
     MatMenuModule, MatDividerModule, MatProgressSpinnerModule, MatTooltipModule,

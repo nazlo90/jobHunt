@@ -21,12 +21,12 @@ export class CvsService {
     private readonly adaptedCvsRepo: Repository<AdaptedCv>,
   ) {}
 
-  async review(dto: GenerateCvDto): Promise<Record<string, unknown>> {
-    const userCv = await this.userCvsRepo.findOne({ where: { id: dto.userCvId } });
+  async review(dto: GenerateCvDto, userId: number): Promise<Record<string, unknown>> {
+    const userCv = await this.userCvsRepo.findOne({ where: { id: dto.userCvId, userId } });
     if (!userCv) throw new NotFoundException(`CV ${dto.userCvId} not found`);
 
     const job = dto.jobId
-      ? await this.jobsRepo.findOne({ where: { id: dto.jobId } })
+      ? await this.jobsRepo.findOne({ where: { id: dto.jobId, userId } })
       : null;
 
     const candidateInput = `CANDIDATE CV (plain text extracted from PDF):\n${userCv.cvText}`;
@@ -87,6 +87,7 @@ Return a JSON object with exactly these fields:
     // Save review to DB
     const entity = this.adaptedCvsRepo.create({
       jobId: dto.jobId ?? undefined,
+      userId,
       company: job?.company ?? dto.company ?? '',
       role: job?.role ?? dto.role ?? '',
       relevanceScore: result.relevance_score as number,
@@ -119,9 +120,9 @@ Return a JSON object with exactly these fields:
     };
   }
 
-  async getLatestForJob(jobId: number): Promise<Record<string, unknown> | null> {
+  async getLatestForJob(jobId: number, userId: number): Promise<Record<string, unknown> | null> {
     const entity = await this.adaptedCvsRepo.findOne({
-      where: { jobId },
+      where: { jobId, userId },
       order: { createdAt: 'DESC' },
     });
     if (!entity) return null;
@@ -146,8 +147,8 @@ Return a JSON object with exactly these fields:
 
   // ── adapt ────────────────────────────────────────────────────────────────────
 
-  async adapt(adaptedCvId: number): Promise<{ adaptedCvText: string }> {
-    const adaptedCv = await this.adaptedCvsRepo.findOne({ where: { id: adaptedCvId } });
+  async adapt(adaptedCvId: number, userId: number): Promise<{ adaptedCvText: string }> {
+    const adaptedCv = await this.adaptedCvsRepo.findOne({ where: { id: adaptedCvId, userId } });
     if (!adaptedCv) throw new NotFoundException(`AdaptedCv ${adaptedCvId} not found`);
 
     if (!adaptedCv.userCvId || !adaptedCv.jobDescription) {

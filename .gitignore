@@ -105,4 +105,5 @@ db/*.db-wal
 # AI tool runtime artifacts (downloaded skills, lock files)
 .agents/
 .kiro/
+.claude/
 skills-lock.json

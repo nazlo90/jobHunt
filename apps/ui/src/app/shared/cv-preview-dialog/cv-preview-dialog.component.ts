@@ -10,7 +10,6 @@ export type { CvPreviewDialogData };
 
 @Component({
   selector: 'app-cv-preview-dialog',
-  standalone: true,
   imports: [MatDialogModule, MatButtonModule, MatIconModule, MatTooltipModule],
   template: `
     <div class="dlg-toolbar">

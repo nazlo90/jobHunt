@@ -14,7 +14,6 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
 
 @Component({
   selector: 'app-dashboard',
-  standalone: true,
   imports: [
     DatePipe, MatCardModule, MatButtonModule, MatIconModule,
     MatProgressSpinnerModule, MatSelectModule, MatFormFieldModule, MatTooltipModule,

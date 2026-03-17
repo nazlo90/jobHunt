@@ -4,49 +4,59 @@ import {
 import { ScraperProfileService } from './scraper-profile.service';
 import { CreateScraperProfileDto } from './create-scraper-profile.dto';
 import { UpdateScraperProfileDto } from './update-scraper-profile.dto';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User } from '../database/entities/user.entity';
 
 @Controller('profiles')
 export class ScraperProfileController {
   constructor(private readonly service: ScraperProfileService) {}
 
   @Get()
-  async list() {
-    return { ok: true, profiles: await this.service.list() };
+  async list(@CurrentUser() user: User) {
+    return { ok: true, profiles: await this.service.list(user.id) };
   }
 
   @Get('active')
-  async getActive() {
-    return { ok: true, profile: await this.service.getActive() };
+  async getActive(@CurrentUser() user: User) {
+    return { ok: true, profile: await this.service.getActive(user.id) };
   }
 
   @Get(':id')
-  async getById(@Param('id', ParseIntPipe) id: number) {
-    return { ok: true, profile: await this.service.getById(id) };
+  async getById(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: User) {
+    return { ok: true, profile: await this.service.getById(id, user.id) };
   }
 
   @Post()
-  async create(@Body() dto: CreateScraperProfileDto) {
-    return { ok: true, profile: await this.service.create(dto) };
+  async create(@Body() dto: CreateScraperProfileDto, @CurrentUser() user: User) {
+    return { ok: true, profile: await this.service.create(dto, user.id) };
   }
 
   @Patch(':id')
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateScraperProfileDto) {
-    return { ok: true, profile: await this.service.update(id, dto) };
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateScraperProfileDto,
+    @CurrentUser() user: User,
+  ) {
+    return { ok: true, profile: await this.service.update(id, dto, user.id) };
   }
 
   @Post(':id/activate')
-  async activate(@Param('id', ParseIntPipe) id: number) {
-    return { ok: true, profile: await this.service.activate(id) };
+  async activate(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: User) {
+    return { ok: true, profile: await this.service.activate(id, user.id) };
   }
 
   @Post(':id/duplicate')
-  async duplicate(@Param('id', ParseIntPipe) id: number, @Body() body: { name: string }) {
-    return { ok: true, profile: await this.service.duplicate(id, body.name) };
+  async duplicate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { name: string },
+    @CurrentUser() user: User,
+  ) {
+    return { ok: true, profile: await this.service.duplicate(id, body.name, user.id) };
   }
 
   @Delete(':id')
-  async delete(@Param('id', ParseIntPipe) id: number) {
-    await this.service.delete(id);
+  async delete(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: User) {
+    await this.service.delete(id, user.id);
     return { ok: true };
   }
 }

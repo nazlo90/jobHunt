@@ -3,6 +3,7 @@ import {
   UpdateDateColumn, OneToMany,
 } from 'typeorm';
 import { AdaptedCv } from './adapted-cv.entity';
+import { User } from './user.entity';
 
 export type JobStatus =
   | 'New'
@@ -64,6 +65,9 @@ export class Job {
 
   @Column({ name: 'description_preview', nullable: true })
   descriptionPreview: string;
+
+  @Column({ name: 'user_id', nullable: true })
+  userId: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

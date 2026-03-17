@@ -37,6 +37,9 @@ export class ScraperConfig {
   @Column({ name: 'enabled_sources', type: 'simple-json', nullable: true })
   enabledSources: string[] | null;
 
+  @Column({ name: 'user_id', nullable: true })
+  userId: number;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }

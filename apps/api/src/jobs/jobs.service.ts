@@ -38,15 +38,16 @@ export class JobsService {
     private readonly jobsRepo: Repository<Job>,
   ) {}
 
-  async findAll(query: QueryJobsDto): Promise<{ jobs: Job[]; total: number }> {
+  async findAll(query: QueryJobsDto, userId: number): Promise<{ jobs: Job[]; total: number }> {
     const page  = query.page  ?? 1;
     const limit = query.limit ?? 25;
     const skip  = (page - 1) * limit;
 
-    const qb = this.jobsRepo.createQueryBuilder('job');
+    const qb = this.jobsRepo.createQueryBuilder('job')
+      .where('job.userId = :userId', { userId });
 
     if (query.search) {
-      qb.where(
+      qb.andWhere(
         '(job.company LIKE :s OR job.role LIKE :s OR job.techStack LIKE :s OR job.notes LIKE :s OR job.descriptionPreview LIKE :s)',
         { s: `%${query.search}%` },
       );
@@ -71,22 +72,25 @@ export class JobsService {
     return { jobs, total };
   }
 
-  async getStats() {
-    const total = await this.jobsRepo.count();
+  async getStats(userId: number) {
+    const total = await this.jobsRepo.count({ where: { userId } });
     const pipeline = await this.jobsRepo
       .createQueryBuilder('job')
-      .where("job.status NOT IN ('New', 'Saved', 'Archived', 'Rejected')")
+      .where('job.userId = :userId', { userId })
+      .andWhere("job.status NOT IN ('New', 'Saved', 'Archived', 'Rejected')")
       .getCount();
-    const offers   = await this.jobsRepo.count({ where: { status: 'Offer' } });
+    const offers   = await this.jobsRepo.count({ where: { status: 'Offer', userId } });
     const thisWeek = await this.jobsRepo
       .createQueryBuilder('job')
-      .where("job.appliedDate >= date('now', '-7 days')")
+      .where('job.userId = :userId', { userId })
+      .andWhere("job.appliedDate >= date('now', '-7 days')")
       .getCount();
 
     const byStatus = await this.jobsRepo
       .createQueryBuilder('job')
       .select('job.status', 'status')
       .addSelect('COUNT(*)', 'count')
+      .where('job.userId = :userId', { userId })
       .groupBy('job.status')
       .getRawMany();
 
@@ -94,19 +98,20 @@ export class JobsService {
       .createQueryBuilder('job')
       .select('job.source', 'source')
       .addSelect('COUNT(*)', 'count')
+      .where('job.userId = :userId', { userId })
       .groupBy('job.source')
       .getRawMany();
 
     return { total, pipeline, offers, thisWeek, byStatus, bySource };
   }
 
-  async findOne(id: number): Promise<Job> {
-    const job = await this.jobsRepo.findOne({ where: { id } });
+  async findOne(id: number, userId: number): Promise<Job> {
+    const job = await this.jobsRepo.findOne({ where: { id, userId } });
     if (!job) throw new NotFoundException(`Job #${id} not found`);
     return job;
   }
 
-  async create(dto: CreateJobDto): Promise<Job> {
+  async create(dto: CreateJobDto, userId: number): Promise<Job> {
     const job = this.jobsRepo.create({
       company:     dto.company,
       role:        dto.role,
@@ -121,18 +126,19 @@ export class JobsService {
       contact:     dto.contact     ?? '',
       notes:       dto.notes       ?? '',
       source:      dto.source      ?? 'manual',
+      userId,
     });
     return this.jobsRepo.save(job);
   }
 
-  async update(id: number, dto: UpdateJobDto): Promise<Job> {
-    const job = await this.findOne(id);
+  async update(id: number, dto: UpdateJobDto, userId: number): Promise<Job> {
+    const job = await this.findOne(id, userId);
     Object.assign(job, dto);
     return this.jobsRepo.save(job);
   }
 
-  async remove(id: number): Promise<void> {
-    const job = await this.findOne(id);
+  async remove(id: number, userId: number): Promise<void> {
+    const job = await this.findOne(id, userId);
     await this.jobsRepo.remove(job);
   }
 

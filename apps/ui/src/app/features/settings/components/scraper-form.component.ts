@@ -20,7 +20,6 @@ import { ArrayField, ALL_SOURCES } from '@core/constants/scraper.const';
 
 @Component({
   selector: 'app-scraper-form',
-  standalone: true,
   imports: [
     ReactiveFormsModule, FormsModule,
     MatCardModule, MatFormFieldModule, MatInputModule, MatSelectModule,

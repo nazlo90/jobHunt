@@ -52,6 +52,9 @@ export class AdaptedCv {
   @Column({ nullable: true, type: 'text' })
   advice: string;
 
+  @Column({ name: 'user_id', nullable: true })
+  userId: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

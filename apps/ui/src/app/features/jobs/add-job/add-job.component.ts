@@ -15,7 +15,6 @@ import { JOB_STATUSES, JobStatus } from '@core/models/job.model';
 
 @Component({
   selector: 'app-add-job',
-  standalone: true,
   imports: [
     RouterLink, FormsModule,
     MatCardModule, MatButtonModule, MatIconModule,

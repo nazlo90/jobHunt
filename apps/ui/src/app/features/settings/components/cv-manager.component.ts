@@ -43,7 +43,6 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 @Component({
   selector: 'app-cv-manager',
-  standalone: true,
   imports: [
     FormsModule, MatButtonModule, MatIconModule, MatListModule,
     MatInputModule, MatFormFieldModule, MatProgressSpinnerModule, MatTooltipModule,

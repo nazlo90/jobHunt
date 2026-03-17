@@ -6,20 +6,22 @@ import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { QueryJobsDto } from './dto/query-jobs.dto';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User } from '../database/entities/user.entity';
 
 @Controller('jobs')
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Get()
-  async findAll(@Query() query: QueryJobsDto) {
-    const { jobs, total } = await this.jobsService.findAll(query);
+  async findAll(@Query() query: QueryJobsDto, @CurrentUser() user: User) {
+    const { jobs, total } = await this.jobsService.findAll(query, user.id);
     return { ok: true, jobs, total };
   }
 
   @Get('stats')
-  async getStats() {
-    const stats = await this.jobsService.getStats();
+  async getStats(@CurrentUser() user: User) {
+    const stats = await this.jobsService.getStats(user.id);
     return { ok: true, stats };
   }
 
@@ -31,15 +33,15 @@ export class JobsController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    const job = await this.jobsService.findOne(id);
+  async findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: User) {
+    const job = await this.jobsService.findOne(id, user.id);
     return { ok: true, job };
   }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() dto: CreateJobDto) {
-    const job = await this.jobsService.create(dto);
+  async create(@Body() dto: CreateJobDto, @CurrentUser() user: User) {
+    const job = await this.jobsService.create(dto, user.id);
     return { ok: true, job };
   }
 
@@ -47,15 +49,16 @@ export class JobsController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateJobDto,
+    @CurrentUser() user: User,
   ) {
-    const job = await this.jobsService.update(id, dto);
+    const job = await this.jobsService.update(id, dto, user.id);
     return { ok: true, job };
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.jobsService.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: User) {
+    await this.jobsService.remove(id, user.id);
     return { ok: true };
   }
 }

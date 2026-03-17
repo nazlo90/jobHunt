@@ -12,6 +12,6 @@ export class ScraperScheduler {
   @Cron('0 8 * * *')
   async runDailyScrape() {
     this.logger.log('Daily scrape triggered by scheduler');
-    await this.scraperService.run();
+    await this.scraperService.runForAllUsers();
   }
 }

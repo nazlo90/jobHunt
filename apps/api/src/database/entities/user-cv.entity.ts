@@ -17,6 +17,9 @@ export class UserCv {
   @Column({ type: 'blob', name: 'pdf_data', nullable: true })
   pdfData: Buffer | null;
 
+  @Column({ name: 'user_id', nullable: true })
+  userId: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

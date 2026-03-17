@@ -21,7 +21,6 @@ import { JOB_STATUSES, JobStatus } from '@core/models/job.model';
 
 @Component({
   selector: 'app-jobs-list',
-  standalone: true,
   imports: [
     RouterLink, FormsModule, ReactiveFormsModule, DatePipe,
     MatTableModule, MatInputModule, MatSelectModule,

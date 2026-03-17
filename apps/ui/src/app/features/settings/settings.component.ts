@@ -12,7 +12,6 @@ import { ScraperFormComponent } from './components/scraper-form.component';
 
 @Component({
   selector: 'app-settings',
-  standalone: true,
   imports: [
     MatCardModule, MatDividerModule, MatProgressSpinnerModule,
     CvManagerComponent, ProfileSelectorComponent, ScraperFormComponent,

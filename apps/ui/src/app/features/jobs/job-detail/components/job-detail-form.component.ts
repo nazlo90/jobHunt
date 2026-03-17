@@ -13,7 +13,6 @@ import { FormFields } from './job-detail-form.model';
 
 @Component({
   selector: 'app-job-detail-form',
-  standalone: true,
   imports: [
     FormsModule,
     MatInputModule, MatSelectModule, MatButtonModule, MatIconModule,

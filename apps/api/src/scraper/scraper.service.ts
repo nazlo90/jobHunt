@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Job } from '../database/entities/job.entity';
 import { ScraperProfileService } from '../scraper-profile/scraper-profile.service';
 
@@ -49,7 +49,14 @@ export class ScraperService {
     if (this.running) this.stopRequested = true;
   }
 
-  async run(profileId?: number): Promise<ScraperRun> {
+  async runForAllUsers(): Promise<void> {
+    const userIds = await this.configService.getAllUserIds();
+    for (const userId of userIds) {
+      await this.run(undefined, userId);
+    }
+  }
+
+  async run(profileId?: number, userId?: number): Promise<ScraperRun> {
     if (this.running) {
       return { ...this.lastRun!, startedAt: this.lastRun!.startedAt };
     }
@@ -71,8 +78,8 @@ export class ScraperService {
       const scrapers = await import('../../../../src/scrapers/index.js' as any);
       const utils    = await import('../../../../src/scrapers/utils.js' as any);
       const profile  = profileId
-        ? await this.configService.getById(profileId)
-        : await this.configService.getActive();
+        ? await this.configService.getById(profileId, userId)
+        : await this.configService.getActive(userId);
       this.logger.log(`Using profile: "${profile.name}" (id=${profile.id})`);
 
       // Pass only scraper-relevant fields so module-level CONFIG stays clean
@@ -150,7 +157,7 @@ export class ScraperService {
       }
 
       run.total = allJobs.length;
-      await this.upsertJobs(allJobs, run);
+      await this.upsertJobs(allJobs, run, userId);
 
       run.finishedAt = new Date();
       this.logger.log(`Scraper done: ${run.inserted} new, ${run.updated} updated from ${run.total} scraped`);
@@ -172,7 +179,7 @@ export class ScraperService {
     return 5;
   }
 
-  private async upsertJobs(rawJobs: ScrapedJob[], run: ScraperRun): Promise<void> {
+  private async upsertJobs(rawJobs: ScrapedJob[], run: ScraperRun, userId?: number): Promise<void> {
     if (rawJobs.length === 0) return;
 
     // Deduplicate within the current scrape batch — keep first occurrence per scrapeId
@@ -186,17 +193,26 @@ export class ScraperService {
 
     const scrapeIds = allJobs.map((j) => j.scrapeId);
 
-    const archiveResult = await this.jobsRepo
+    const archiveQb = this.jobsRepo
       .createQueryBuilder()
       .update(Job)
       .set({ status: 'Archived' as any })
-      .where('status = :status AND scrape_id NOT IN (:...ids)', { status: 'New', ids: scrapeIds })
-      .execute();
+      .where('status = :status AND scrape_id NOT IN (:...ids)', { status: 'New', ids: scrapeIds });
+    if (userId != null) {
+      archiveQb.andWhere('user_id = :userId', { userId });
+    }
+    const archiveResult = await archiveQb.execute();
     run.deleted = archiveResult.affected ?? 0;
     this.logger.log(`Archived ${run.deleted} stale New jobs`);
 
     // Batch load all existing jobs in one query instead of N findOne calls
-    const existingJobs = await this.jobsRepo.find({ where: { scrapeId: In(scrapeIds) } });
+    const existingQb = this.jobsRepo
+      .createQueryBuilder('job')
+      .where('job.scrape_id IN (:...ids)', { ids: scrapeIds });
+    if (userId != null) {
+      existingQb.andWhere('job.user_id = :userId', { userId });
+    }
+    const existingJobs = await existingQb.getMany();
     const existingMap  = new Map(existingJobs.map((j) => [j.scrapeId, j]));
 
     // Secondary dedup by company+role — catches cases where scrapeId drifts between runs
@@ -205,11 +221,14 @@ export class ScraperService {
     const companyRoleExists = new Set<string>();
     if (jobsWithoutScrapeMatch.length > 0) {
       const companies = [...new Set(jobsWithoutScrapeMatch.map((j) => norm(j.company)))];
-      const existing = await this.jobsRepo
+      const dedupQb = this.jobsRepo
         .createQueryBuilder('job')
         .select(['job.company', 'job.role'])
-        .where('LOWER(TRIM(job.company)) IN (:...companies) AND job.status = :status', { companies, status: 'New' })
-        .getMany();
+        .where('LOWER(TRIM(job.company)) IN (:...companies) AND job.status = :status', { companies, status: 'New' });
+      if (userId != null) {
+        dedupQb.andWhere('job.user_id = :userId', { userId });
+      }
+      const existing = await dedupQb.getMany();
       for (const j of existing) {
         companyRoleExists.add(`${norm(j.company)}|${norm(j.role)}`);
       }
@@ -237,6 +256,7 @@ export class ScraperService {
           descriptionPreview: scraped.descriptionPreview ?? '',
           status:             'New',
           priority:           this.rawScoreToPriority(scraped.score ?? 0),
+          userId,
         }));
         run.inserted++;
       } else if (existing.status === 'New') {

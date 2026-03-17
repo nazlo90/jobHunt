@@ -25,6 +25,9 @@ export class McpServer implements OnModuleInit {
     this.logger.log('MCP tool surface ready (stub). Run /typescript-mcp-server-generator to scaffold the full server.');
   }
 
+  // MCP server runs as the primary user (userId=1) — no HTTP session available
+  private readonly MCP_USER_ID = 1;
+
   // --- Tool: search_jobs ---
   // Input: { query?: string, status?: string, source?: string, sortBy?: string }
   // Output: Job[]
@@ -34,18 +37,18 @@ export class McpServer implements OnModuleInit {
       status: params.status,
       source: params.source,
       sortBy: params.sortBy as any,
-    });
+    }, this.MCP_USER_ID);
   }
 
   // --- Tool: get_job_stats ---
   // Output: { total, pipeline, offers, thisWeek, byStatus, bySource }
   async getJobStats() {
-    return this.jobsService.getStats();
+    return this.jobsService.getStats(this.MCP_USER_ID);
   }
 
   // --- Tool: update_job_status ---
   // Input: { id: number, status: JobStatus }
   async updateJobStatus(id: number, status: string) {
-    return this.jobsService.update(id, { status: status as any });
+    return this.jobsService.update(id, { status: status as any }, this.MCP_USER_ID);
   }
 }
