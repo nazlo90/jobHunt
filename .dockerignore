@@ -1,0 +1,24 @@
+# Dependencies (installed inside Docker)
+**/node_modules
+
+# Build outputs (produced inside Docker)
+apps/api/dist
+apps/api/public
+apps/ui/dist
+apps/ui/.angular
+
+# Database — mounted as a volume at runtime, never baked into the image
+db/
+
+# Secrets
+**/.env
+**/.env.*
+
+# Dev/tool artifacts
+.git
+.claude
+.agents
+.kiro
+**/*.log
+**/coverage
+**/*.tsbuildinfo

@@ -18,7 +18,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist/jobhunt-ui",
+            "outputPath": "../api/public",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [],
