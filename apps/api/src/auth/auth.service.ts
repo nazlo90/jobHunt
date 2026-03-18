@@ -91,14 +91,21 @@ export class AuthService {
     );
 
     await this.rtRepo.save(
-      this.rtRepo.create({ tokenHash: hash, familyId, userId: user.id, expiresAt }),
+      this.rtRepo.create({
+        tokenHash: hash,
+        familyId,
+        userId: user.id,
+        expiresAt,
+      }),
     );
     return raw;
   }
 
   // ─── Refresh ───────────────────────────────────────────────────────────────
 
-  async refresh(rawToken: string): Promise<{ accessToken: string; newRaw: string }> {
+  async refresh(
+    rawToken: string,
+  ): Promise<{ accessToken: string; newRaw: string }> {
     const hash = sha256(rawToken);
     const rt = await this.rtRepo.findOne({
       where: { tokenHash: hash },
@@ -185,7 +192,8 @@ export class AuthService {
 
   async verifyEmail(rawToken: string): Promise<void> {
     const user = await this.users.findByEmailVerifyToken(rawToken);
-    if (!user) throw new BadRequestException('Invalid or expired verification link');
+    if (!user)
+      throw new BadRequestException('Invalid or expired verification link');
     await this.users.setEmailVerified(user.id);
   }
 

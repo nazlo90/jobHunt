@@ -1,4 +1,11 @@
-import { Controller, Post, Get, Body, Query, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Query,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { CvsService } from './cvs.service';
 import { GenerateCvDto } from './dto/generate-cv.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -24,7 +31,10 @@ export class CvsController {
   }
 
   @Post('adapt')
-  async adapt(@Body() body: { adaptedCvId: number }, @CurrentUser() user: User) {
+  async adapt(
+    @Body() body: { adaptedCvId: number },
+    @CurrentUser() user: User,
+  ) {
     const result = await this.cvsService.adapt(body.adaptedCvId, user.id);
     return { ok: true, adaptedCvText: result.adaptedCvText };
   }

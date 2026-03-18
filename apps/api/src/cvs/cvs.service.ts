@@ -1,4 +1,9 @@
-import { Injectable, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Groq from 'groq-sdk';
@@ -21,8 +26,13 @@ export class CvsService {
     private readonly adaptedCvsRepo: Repository<AdaptedCv>,
   ) {}
 
-  async review(dto: GenerateCvDto, userId: number): Promise<Record<string, unknown>> {
-    const userCv = await this.userCvsRepo.findOne({ where: { id: dto.userCvId, userId } });
+  async review(
+    dto: GenerateCvDto,
+    userId: number,
+  ): Promise<Record<string, unknown>> {
+    const userCv = await this.userCvsRepo.findOne({
+      where: { id: dto.userCvId, userId },
+    });
     if (!userCv) throw new NotFoundException(`CV ${dto.userCvId} not found`);
 
     const job = dto.jobId
@@ -70,18 +80,25 @@ Return a JSON object with exactly these fields:
         ],
         max_tokens: 4000,
       });
-      raw = (completion.choices[0].message.content ?? '').trim()
+      raw = (completion.choices[0].message.content ?? '')
+        .trim()
         .replace(/^```json\s*/m, '')
         .replace(/\s*```$/m, '');
     } catch (err: any) {
-      throw new HttpException(err?.message ?? 'Groq API error', HttpStatus.BAD_GATEWAY);
+      throw new HttpException(
+        err?.message ?? 'Groq API error',
+        HttpStatus.BAD_GATEWAY,
+      );
     }
 
     let result: Record<string, unknown>;
     try {
       result = JSON.parse(jsonrepair(raw));
     } catch {
-      throw new HttpException('Failed to parse Groq response', HttpStatus.BAD_GATEWAY);
+      throw new HttpException(
+        'Failed to parse Groq response',
+        HttpStatus.BAD_GATEWAY,
+      );
     }
 
     // Save review to DB
@@ -120,7 +137,10 @@ Return a JSON object with exactly these fields:
     };
   }
 
-  async getLatestForJob(jobId: number, userId: number): Promise<Record<string, unknown> | null> {
+  async getLatestForJob(
+    jobId: number,
+    userId: number,
+  ): Promise<Record<string, unknown> | null> {
     const entity = await this.adaptedCvsRepo.findOne({
       where: { jobId, userId },
       order: { createdAt: 'DESC' },
@@ -133,10 +153,16 @@ Return a JSON object with exactly these fields:
       company: entity.company,
       role: entity.role,
       relevanceScore: entity.relevanceScore,
-      keywordsFound: entity.keywordsFound ? JSON.parse(entity.keywordsFound) : [],
-      missingSkills: entity.missingSkills ? JSON.parse(entity.missingSkills) : [],
+      keywordsFound: entity.keywordsFound
+        ? JSON.parse(entity.keywordsFound)
+        : [],
+      missingSkills: entity.missingSkills
+        ? JSON.parse(entity.missingSkills)
+        : [],
       adaptedProfile: entity.adaptedProfile,
-      topExperience: entity.topExperience ? JSON.parse(entity.topExperience) : [],
+      topExperience: entity.topExperience
+        ? JSON.parse(entity.topExperience)
+        : [],
       coverLetter: entity.coverLetter,
       advice: entity.advice,
       jobDescription: entity.jobDescription,
@@ -147,9 +173,15 @@ Return a JSON object with exactly these fields:
 
   // ── adapt ────────────────────────────────────────────────────────────────────
 
-  async adapt(adaptedCvId: number, userId: number): Promise<{ adaptedCvText: string }> {
-    const adaptedCv = await this.adaptedCvsRepo.findOne({ where: { id: adaptedCvId, userId } });
-    if (!adaptedCv) throw new NotFoundException(`AdaptedCv ${adaptedCvId} not found`);
+  async adapt(
+    adaptedCvId: number,
+    userId: number,
+  ): Promise<{ adaptedCvText: string }> {
+    const adaptedCv = await this.adaptedCvsRepo.findOne({
+      where: { id: adaptedCvId, userId },
+    });
+    if (!adaptedCv)
+      throw new NotFoundException(`AdaptedCv ${adaptedCvId} not found`);
 
     if (!adaptedCv.userCvId || !adaptedCv.jobDescription) {
       throw new HttpException(
@@ -158,16 +190,24 @@ Return a JSON object with exactly these fields:
       );
     }
 
-    const userCv = await this.userCvsRepo.findOne({ where: { id: adaptedCv.userCvId } });
-    if (!userCv) throw new NotFoundException(`User CV ${adaptedCv.userCvId} not found`);
+    const userCv = await this.userCvsRepo.findOne({
+      where: { id: adaptedCv.userCvId },
+    });
+    if (!userCv)
+      throw new NotFoundException(`User CV ${adaptedCv.userCvId} not found`);
 
-    const topExperience: Array<{ role: string; company: string; period: string; bullets: string[] }> =
-      adaptedCv.topExperience ? JSON.parse(adaptedCv.topExperience) : [];
+    const topExperience: Array<{
+      role: string;
+      company: string;
+      period: string;
+      bullets: string[];
+    }> = adaptedCv.topExperience ? JSON.parse(adaptedCv.topExperience) : [];
 
     const expFormatted = topExperience.length
       ? topExperience
-          .map(exp =>
-            `${exp.role} | ${exp.company} | ${exp.period}\n${exp.bullets.map(b => `- ${b}`).join('\n')}`,
+          .map(
+            (exp) =>
+              `${exp.role} | ${exp.company} | ${exp.period}\n${exp.bullets.map((b) => `- ${b}`).join('\n')}`,
           )
           .join('\n\n')
       : '(none — keep all original experience bullets)';
@@ -229,7 +269,9 @@ ADAPTED EXPERIENCE BULLETS (replace bullets for these specific jobs):
 ${expFormatted}
 
 KEYWORDS TO EMPHASISE IN SKILLS: ${
-      adaptedCv.keywordsFound ? JSON.parse(adaptedCv.keywordsFound).join(', ') : ''
+      adaptedCv.keywordsFound
+        ? JSON.parse(adaptedCv.keywordsFound).join(', ')
+        : ''
     }
 
 RAW CV FROM PDF (extract structure from this, keep all sections except profile/adapted-job bullets):
@@ -245,11 +287,15 @@ ${userCv.cvText}`;
         ],
         max_tokens: 4000,
       });
-      raw = (completion.choices[0].message.content ?? '').trim()
+      raw = (completion.choices[0].message.content ?? '')
+        .trim()
         .replace(/^```(?:text|plain)?\s*\n?/m, '')
         .replace(/\n?```\s*$/m, '');
     } catch (err: any) {
-      throw new HttpException(err?.message ?? 'Groq API error', HttpStatus.BAD_GATEWAY);
+      throw new HttpException(
+        err?.message ?? 'Groq API error',
+        HttpStatus.BAD_GATEWAY,
+      );
     }
 
     return { adaptedCvText: raw };

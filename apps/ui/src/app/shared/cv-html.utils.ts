@@ -271,7 +271,6 @@ export function buildCvHtml(text: string, title: string): string {
 </div>`;
 
   const sectionsHtml = sections.map(sec => {
-    const isLabel    = LABEL_SECTIONS.has(sec.key);
     const isTimeline = TIMELINE_SECTIONS.has(sec.key);
 
     if (isTimeline) {
