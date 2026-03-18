@@ -42,6 +42,63 @@ export const AuthStore = signalStore(
     const setLoading = (loading: boolean) => patchState(store, { loading });
     const setError = (error: string | null) => patchState(store, { error });
 
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    let visibilityListenerAdded = false;
+
+    function clearRefreshTimer(): void {
+      if (refreshTimer !== null) {
+        clearTimeout(refreshTimer);
+        refreshTimer = null;
+      }
+    }
+
+    async function proactiveRefresh(): Promise<void> {
+      try {
+        const res = await firstValueFrom(
+          http.post<AuthTokenResponse>(`${API}/auth/refresh`, {}, { withCredentials: true }),
+        );
+        patchState(store, { accessToken: res.accessToken });
+        scheduleTokenRefresh(res.accessToken);
+      } catch {
+        // Proactive refresh failed (network down, tab just woke, etc.)
+        // Don't redirect — let the reactive 401 interceptor handle it when
+        // the user makes their next API call.
+        clearRefreshTimer();
+      }
+    }
+
+    function scheduleTokenRefresh(token: string): void {
+      clearRefreshTimer();
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const msUntilExpiry = payload.exp * 1000 - Date.now();
+        const delay = msUntilExpiry - 30_000; // refresh 30s before expiry
+        if (delay > 0) {
+          refreshTimer = setTimeout(() => void proactiveRefresh(), delay);
+        }
+      } catch {
+        // malformed JWT — skip scheduling, let the 401 interceptor handle it
+      }
+
+      // One-time: refresh when tab becomes visible after being hidden/sleeping
+      if (!visibilityListenerAdded) {
+        visibilityListenerAdded = true;
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState !== 'visible') return;
+          const currentToken = store.accessToken();
+          if (!currentToken) return;
+          try {
+            const payload = JSON.parse(atob(currentToken.split('.')[1]));
+            const msUntilExpiry = payload.exp * 1000 - Date.now();
+            // Refresh if expired or expiring within 60s
+            if (msUntilExpiry < 60_000) {
+              void proactiveRefresh();
+            }
+          } catch { /* ignore */ }
+        });
+      }
+    }
+
     return {
       /** Called once on app init to silently restore session via cookie */
       async init(skipRefresh = false): Promise<void> {
@@ -54,6 +111,7 @@ export const AuthStore = signalStore(
             http.post<AuthTokenResponse>(`${API}/auth/refresh`, {}, { withCredentials: true }),
           );
           patchState(store, { accessToken: res.accessToken });
+          scheduleTokenRefresh(res.accessToken);
           const user = await firstValueFrom(
             http.get<AuthUser>(`${API}/auth/me`, {
               headers: { Authorization: `Bearer ${res.accessToken}` },
@@ -67,9 +125,11 @@ export const AuthStore = signalStore(
 
       setAccessToken(token: string): void {
         patchState(store, { accessToken: token });
+        scheduleTokenRefresh(token);
       },
 
       clearAuth(): void {
+        clearRefreshTimer();
         patchState(store, { user: null, accessToken: null });
       },
 
@@ -98,6 +158,7 @@ export const AuthStore = signalStore(
             }),
           );
           patchState(store, { accessToken: res.accessToken });
+          scheduleTokenRefresh(res.accessToken);
           const user = await firstValueFrom(
             http.get<AuthUser>(`${API}/auth/me`, {
               headers: { Authorization: `Bearer ${res.accessToken}` },
@@ -122,6 +183,7 @@ export const AuthStore = signalStore(
             }),
           );
           patchState(store, { accessToken: res.accessToken });
+          scheduleTokenRefresh(res.accessToken);
           const user = await firstValueFrom(
             http.get<AuthUser>(`${API}/auth/me`, {
               headers: { Authorization: `Bearer ${res.accessToken}` },
@@ -137,6 +199,7 @@ export const AuthStore = signalStore(
       },
 
       async logout(): Promise<void> {
+        clearRefreshTimer();
         try {
           await firstValueFrom(
             http.post(`${API}/auth/logout`, {}, { withCredentials: true }),

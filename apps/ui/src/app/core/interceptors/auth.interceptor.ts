@@ -5,7 +5,7 @@ import {
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, catchError, filter, switchMap, take, throwError } from 'rxjs';
+import { BehaviorSubject, EMPTY, catchError, filter, switchMap, take, throwError } from 'rxjs';
 import { AuthStore } from '../store/auth.store';
 import { AuthTokenResponse } from '../models/auth.model';
 import { environment } from '../../../environments/environment';
@@ -66,12 +66,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
               req.clone({ setHeaders: { Authorization: `Bearer ${accessToken}` } }),
             );
           }),
-          catchError((refreshErr) => {
+          catchError(() => {
             isRefreshing = false;
             refreshToken$.next(null);
             authStore.clearAuth();
             router.navigate(['/auth/login']);
-            return throwError(() => refreshErr);
+            return EMPTY;
           }),
         );
     }),

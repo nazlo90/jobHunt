@@ -7,7 +7,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const toast = inject(ToastService);
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
-      toast.error(extractMessage(err));
+      // 401s are handled by authInterceptor (refresh + redirect to login)
+      if (err.status !== 401) {
+        toast.error(extractMessage(err));
+      }
       return throwError(() => err);
     }),
   );

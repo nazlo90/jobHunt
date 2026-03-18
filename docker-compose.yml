@@ -1,9 +1,8 @@
 services:
   jobhunt:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: jobhunt:latest
+    # In production: DOCKER_IMAGE is set by CI/CD (see .github/workflows/ci.yml)
+    # For local dev: docker-compose.override.yml adds build: and sets image to jobhunt:latest
+    image: ${DOCKER_IMAGE:-jobhunt:latest}
     ports:
       - "3000:3000"
     volumes:
@@ -18,7 +17,6 @@ services:
       JWT_EXPIRY: ${JWT_EXPIRY:-15m}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       REFRESH_TOKEN_EXPIRY_DAYS: ${REFRESH_TOKEN_EXPIRY_DAYS:-7}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}

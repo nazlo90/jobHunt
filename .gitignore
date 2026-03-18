@@ -102,6 +102,9 @@ db/*.db-wal
 *.tmp
 *.temp
 
+# Local Docker override (build: for dev) — not used in production
+docker-compose.override.yml
+
 # AI tool runtime artifacts (downloaded skills, lock files)
 .agents/
 .kiro/

@@ -1,0 +1,172 @@
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Prevent concurrent deploys — queue them instead of cancelling
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # GHCR image — owner is always lowercase
+  IMAGE: ghcr.io/${{ github.repository_owner }}/jobhunt
+
+jobs:
+  # ─── Job 1: Test ────────────────────────────────────────────────────────────
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # ── API ──
+      - name: Setup Node (API)
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install API deps
+        working-directory: apps/api
+        run: npm ci
+
+      - name: Lint API
+        working-directory: apps/api
+        run: npm run lint
+
+      - name: Test API
+        working-directory: apps/api
+        run: npm test -- --passWithNoTests
+
+      # ── UI ──
+      - name: Setup Node (UI)
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/ui/package-lock.json
+
+      - name: Install UI deps
+        working-directory: apps/ui
+        run: npm ci
+
+      - name: Build UI (validates compilation)
+        working-directory: apps/ui
+        run: npm run build -- --configuration production
+
+  # ─── Job 2: Build & Push Docker image to GHCR ───────────────────────────────
+  build-and-push:
+    name: Build & Push Image
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      tags: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Log in to GHCR
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5.4.0
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # GitHub Actions layer cache — speeds up repeat builds significantly
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── Job 3: Deploy to production ────────────────────────────────────────────
+  deploy:
+    name: Deploy to Production
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    # Uses the "production" GitHub Environment — enables required reviewers
+    # and environment-scoped secrets (Settings → Environments → production)
+    environment: production
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a1e # v1.2.0
+        env:
+          # Image to deploy
+          DOCKER_IMAGE: ${{ env.IMAGE }}:latest
+          # Secrets — forwarded to the SSH session via envs: below
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          # Non-sensitive config — stored as GitHub Variables (not Secrets)
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+          GOOGLE_CALLBACK_URL: ${{ vars.GOOGLE_CALLBACK_URL }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Forward all env vars above into the remote shell session
+          envs: DOCKER_IMAGE,JWT_SECRET,JWT_REFRESH_SECRET,GROQ_API_KEY,RESEND_API_KEY,EMAIL_FROM,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,FRONTEND_URL,GOOGLE_CALLBACK_URL
+          script: |
+            set +x   # never echo commands — prevents secrets leaking into logs
+            cd /opt/jobhunt
+
+            # ── Write .env atomically using printf (safe for special chars) ──
+            {
+              printf 'NODE_ENV=production\n'
+              printf 'PORT=3000\n'
+              printf 'DB_PATH=/data/db/jobhunt.db\n'
+              printf 'DOCKER_IMAGE=%s\n'         "$DOCKER_IMAGE"
+              printf 'FRONTEND_URL=%s\n'         "$FRONTEND_URL"
+              printf 'JWT_SECRET=%s\n'           "$JWT_SECRET"
+              printf 'JWT_EXPIRY=15m\n'
+              printf 'JWT_REFRESH_SECRET=%s\n'   "$JWT_REFRESH_SECRET"
+              printf 'REFRESH_TOKEN_EXPIRY_DAYS=7\n'
+              printf 'GROQ_API_KEY=%s\n'         "$GROQ_API_KEY"
+              printf 'RESEND_API_KEY=%s\n'       "$RESEND_API_KEY"
+              printf 'EMAIL_FROM=%s\n'           "$EMAIL_FROM"
+              printf 'GOOGLE_CLIENT_ID=%s\n'     "$GOOGLE_CLIENT_ID"
+              printf 'GOOGLE_CLIENT_SECRET=%s\n' "$GOOGLE_CLIENT_SECRET"
+              printf 'GOOGLE_CALLBACK_URL=%s\n'  "$GOOGLE_CALLBACK_URL"
+            } > .env.tmp
+
+            mv .env.tmp .env
+            chmod 600 .env   # readable only by the deploy user
+
+            # ── Pull latest image and restart ──
+            docker compose pull
+            docker compose up -d --remove-orphans
+
+            # ── Clean up dangling images to save disk space ──
+            docker image prune -f
