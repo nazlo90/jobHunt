@@ -13,6 +13,7 @@ async function bootstrap() {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrcAttr: ["'unsafe-inline'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:'],
           connectSrc: ["'self'"],
@@ -21,6 +22,7 @@ async function bootstrap() {
         },
       },
       crossOriginEmbedderPolicy: false,
+      crossOriginOpenerPolicy: false,
     }),
   );
   app.use(cookieParser());

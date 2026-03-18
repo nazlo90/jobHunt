@@ -187,7 +187,7 @@ export class AuthController {
   private setCookieRaw(res: Response, raw: string): void {
     res.cookie(COOKIE_NAME, raw, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.COOKIE_SECURE === 'true',
       sameSite: 'strict',
       path: '/api/auth/refresh',
       maxAge: this.refreshExpiryDays * 86400 * 1000,
