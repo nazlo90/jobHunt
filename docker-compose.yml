@@ -1,8 +1,7 @@
 services:
   jobhunt:
-    # In production: DOCKER_IMAGE is set by CI/CD (see .github/workflows/ci.yml)
-    # For local dev: docker-compose.override.yml adds build: and sets image to jobhunt:latest
-    image: ${DOCKER_IMAGE:-jobhunt:latest}
+    build: .
+    image: jobhunt:latest
     ports:
       - "3000:3000"
     volumes:
