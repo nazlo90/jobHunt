@@ -56,6 +56,10 @@ jobs:
         working-directory: apps/ui
         run: npm ci
 
+      - name: Lint UI
+        working-directory: apps/ui
+        run: npm run lint
+
       - name: Build UI (validates compilation)
         working-directory: apps/ui
         run: npm run build -- --configuration production
