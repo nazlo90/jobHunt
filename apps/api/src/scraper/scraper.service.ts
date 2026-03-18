@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as path from 'path';
 import { Repository } from 'typeorm';
 import { Job } from '../database/entities/job.entity';
 import { ScraperProfileService } from '../scraper-profile/scraper-profile.service';
@@ -75,8 +76,12 @@ export class ScraperService {
     this.logger.log('Scraper started');
 
     try {
-      const scrapers = await import('../../../../src/scrapers/index.js' as any);
-      const utils    = await import('../../../../src/scrapers/utils.js' as any);
+      // Dev:  __dirname = apps/api/src/scraper/ → ../../../../src/scrapers/
+      // Prod: __dirname = /app/dist/scraper/   → ../../scrapers/
+      const scrapersBase = process.env.SCRAPERS_PATH
+        ?? path.resolve(__dirname, '../../../../src/scrapers');
+      const scrapers = await import(`${scrapersBase}/index.js` as any);
+      const utils    = await import(`${scrapersBase}/utils.js` as any);
       const profile  = profileId
         ? await this.configService.getById(profileId, userId)
         : await this.configService.getActive(userId);

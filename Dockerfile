@@ -40,9 +40,12 @@ COPY --from=api-build /build/apps/api/dist ./dist
 COPY --from=api-build /build/apps/api/public ./public
 # node_modules from api-build stage (includes pre-compiled native binaries for alpine)
 COPY --from=api-build /build/apps/api/node_modules ./node_modules
+# Raw JS scrapers (not compiled by tsc, live outside apps/api)
+COPY src/scrapers ./scrapers
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV SCRAPERS_PATH=/app/scrapers
 # DB_PATH must be set at runtime to a mounted volume path, e.g. /data/db/jobhunt.db
 
 EXPOSE 3000
