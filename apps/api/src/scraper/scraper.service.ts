@@ -248,22 +248,30 @@ export class ScraperService {
           this.logger.debug(`Skip duplicate (company+role): ${scraped.company} – ${scraped.role}`);
           continue;
         }
-        await this.jobsRepo.save(this.jobsRepo.create({
-          scrapeId:           scraped.scrapeId,
-          company:            scraped.company,
-          role:               scraped.role,
-          salary:             scraped.salary      ?? '',
-          salaryRaw:          scraped.salaryRaw   ?? 0,
-          url:                scraped.url         ?? '',
-          location:           scraped.location    ?? '',
-          techStack:          scraped.techStack   ?? '',
-          source:             scraped.source,
-          descriptionPreview: scraped.descriptionPreview ?? '',
-          status:             'New',
-          priority:           this.rawScoreToPriority(scraped.score ?? 0),
-          userId,
-        }));
-        run.inserted++;
+        try {
+          await this.jobsRepo.save(this.jobsRepo.create({
+            scrapeId:           scraped.scrapeId,
+            company:            scraped.company,
+            role:               scraped.role,
+            salary:             scraped.salary      ?? '',
+            salaryRaw:          scraped.salaryRaw   ?? 0,
+            url:                scraped.url         ?? '',
+            location:           scraped.location    ?? '',
+            techStack:          scraped.techStack   ?? '',
+            source:             scraped.source,
+            descriptionPreview: scraped.descriptionPreview ?? '',
+            status:             'New',
+            priority:           this.rawScoreToPriority(scraped.score ?? 0),
+            userId,
+          }));
+          run.inserted++;
+        } catch (err: any) {
+          if (err?.message?.includes('UNIQUE constraint failed')) {
+            this.logger.debug(`Skip duplicate scrape_id (cross-user): ${scraped.scrapeId}`);
+          } else {
+            throw err;
+          }
+        }
       } else if (existing.status === 'New') {
         // Refresh scraped fields for jobs not yet acted on
         await this.jobsRepo.save({

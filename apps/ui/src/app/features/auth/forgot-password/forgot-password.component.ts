@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -78,9 +78,13 @@ import { AuthStore } from '../../../core/store/auth.store';
     .auth-links a:hover { text-decoration: underline; }
   `],
 })
-export class ForgotPasswordComponent {
+export class ForgotPasswordComponent implements OnInit {
   protected readonly authStore = inject(AuthStore);
   protected readonly sent = signal(false);
+
+  ngOnInit(): void {
+    this.authStore.clearError();
+  }
 
   protected readonly form = inject(FormBuilder).group({
     email: ['', [Validators.required, Validators.email]],

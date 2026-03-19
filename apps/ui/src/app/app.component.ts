@@ -1,5 +1,6 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -7,6 +8,8 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { Subscription } from 'rxjs';
 import { JobsStore } from '@core/store/jobs.store';
 import { AuthStore } from '@core/store/auth.store';
 
@@ -16,12 +19,17 @@ import { AuthStore } from '@core/store/auth.store';
     RouterOutlet, RouterLink, RouterLinkActive,
     MatButtonModule, MatIconModule, MatSidenavModule,
     MatListModule, MatProgressSpinnerModule, MatTooltipModule,
-    MatMenuModule,
+    MatMenuModule, MatToolbarModule,
   ],
   template: `
     @if (authStore.isAuthenticated()) {
       <mat-sidenav-container class="!h-screen">
-        <mat-sidenav mode="side" opened class="w-[230px] border-r border-slate-200 bg-white flex flex-col">
+        <mat-sidenav
+          #sidenav
+          [mode]="isMobile() ? 'over' : 'side'"
+          [opened]="!isMobile()"
+          class="w-[230px] border-r border-slate-200 bg-white flex flex-col"
+        >
 
           <!-- Brand -->
           <div class="flex items-center gap-2.5 px-4 pt-5 pb-4">
@@ -40,15 +48,18 @@ import { AuthStore } from '@core/store/auth.store';
 
           <!-- Navigation -->
           <mat-nav-list class="!px-2 flex-1">
-            <a mat-list-item routerLink="/dashboard" routerLinkActive="nav-active" class="!rounded-lg !mb-0.5">
+            <a mat-list-item routerLink="/dashboard" routerLinkActive="nav-active" class="!rounded-lg !mb-0.5"
+               (click)="isMobile() && sidenav.close()">
               <mat-icon matListItemIcon>dashboard</mat-icon>
               <span matListItemTitle>Dashboard</span>
             </a>
-            <a mat-list-item routerLink="/jobs" routerLinkActive="nav-active" class="!rounded-lg !mb-0.5">
+            <a mat-list-item routerLink="/jobs" routerLinkActive="nav-active" class="!rounded-lg !mb-0.5"
+               (click)="isMobile() && sidenav.close()">
               <mat-icon matListItemIcon>list_alt</mat-icon>
               <span matListItemTitle>Jobs</span>
             </a>
-            <a mat-list-item routerLink="/settings" routerLinkActive="nav-active" class="!rounded-lg !mb-0.5">
+            <a mat-list-item routerLink="/settings" routerLinkActive="nav-active" class="!rounded-lg !mb-0.5"
+               (click)="isMobile() && sidenav.close()">
               <mat-icon matListItemIcon>tune</mat-icon>
               <span matListItemTitle>Settings</span>
             </a>
@@ -69,7 +80,7 @@ import { AuthStore } from '@core/store/auth.store';
             >
               <div class="flex items-center w-full">
                 @if (authStore.user()?.avatarUrl; as avatar) {
-                  <img [src]="avatar" class="w-6 h-6 rounded-full mr-2" alt="avatar" />
+                  <img [src]="avatar" class="w-6 h-6 rounded-full mr-2" alt="avatar" referrerpolicy="no-referrer" />
                 } @else {
                   <mat-icon class="mr-2">account_circle</mat-icon>
                 }
@@ -82,7 +93,35 @@ import { AuthStore } from '@core/store/auth.store';
         </mat-sidenav>
 
         <mat-sidenav-content class="bg-slate-50">
-          <div class="p-8 min-h-full">
+          <!-- Mobile top toolbar -->
+          @if (isMobile()) {
+            <mat-toolbar class="mobile-toolbar !bg-white border-b border-slate-200 !shadow-sm">
+              <button mat-icon-button (click)="sidenav.toggle()" aria-label="Toggle menu">
+                <mat-icon>menu</mat-icon>
+              </button>
+              <div class="flex items-center gap-2 ml-1">
+                <div class="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
+                  <mat-icon class="!text-white !text-[16px] !w-4 !h-4">work_outline</mat-icon>
+                </div>
+                <span class="text-[16px] font-bold text-slate-900 tracking-tight">JobHunt</span>
+              </div>
+              @if (store.scraperRunning()) {
+                <span class="ml-2 flex items-center" matTooltip="Scraper is running…">
+                  <mat-spinner diameter="14" />
+                </span>
+              }
+              <span class="flex-1"></span>
+              <button mat-icon-button [matMenuTriggerFor]="userMenu" aria-label="User menu">
+                @if (authStore.user()?.avatarUrl; as avatar) {
+                  <img [src]="avatar" class="w-7 h-7 rounded-full" alt="avatar" referrerpolicy="no-referrer" />
+                } @else {
+                  <mat-icon>account_circle</mat-icon>
+                }
+              </button>
+            </mat-toolbar>
+          }
+
+          <div class="p-4 md:p-6 lg:p-8 min-h-full">
             <router-outlet />
           </div>
         </mat-sidenav-content>
@@ -99,14 +138,28 @@ import { AuthStore } from '@core/store/auth.store';
       </button>
     </mat-menu>
   `,
-  styles: [`mat-sidenav-container { height: 100vh; }`],
+  styles: [`
+    mat-sidenav-container { height: 100vh; }
+    .mobile-toolbar { position: sticky; top: 0; z-index: 100; }
+  `],
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   readonly store = inject(JobsStore);
   readonly authStore = inject(AuthStore);
+  private readonly breakpointObserver = inject(BreakpointObserver);
+
+  readonly isMobile = signal(false);
+  private bpSub?: Subscription;
+
   ngOnInit() {
-    // Skip the refresh call on auth routes — no session to restore there
     this.authStore.init(window.location.pathname.startsWith('/auth'));
     this.store.initScraper();
+    this.bpSub = this.breakpointObserver
+      .observe([Breakpoints.XSmall, Breakpoints.Small])
+      .subscribe(result => this.isMobile.set(result.matches));
+  }
+
+  ngOnDestroy() {
+    this.bpSub?.unsubscribe();
   }
 }

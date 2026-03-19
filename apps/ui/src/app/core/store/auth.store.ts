@@ -133,6 +133,10 @@ export const AuthStore = signalStore(
         patchState(store, { user: null, accessToken: null });
       },
 
+      clearError(): void {
+        setError(null);
+      },
+
       async loadCurrentUser(): Promise<void> {
         const token = store.accessToken();
         if (!token) return;

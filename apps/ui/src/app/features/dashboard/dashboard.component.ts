@@ -32,7 +32,7 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
       } @else if (store.stats(); as stats) {
 
         <!-- Stat cards -->
-        <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
 
           <mat-card>
             <mat-card-content class="!p-5">
@@ -77,7 +77,7 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
         </div>
 
         <!-- Bottom row -->
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
           <mat-card>
             <mat-card-header><mat-card-title>By Status</mat-card-title></mat-card-header>

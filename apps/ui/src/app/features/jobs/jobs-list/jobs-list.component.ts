@@ -1,8 +1,9 @@
-import { Component, OnInit, inject, DestroyRef, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, DestroyRef, computed, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { MatTableModule } from '@angular/material/table';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -14,10 +15,14 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { debounceTime, distinctUntilChanged, Subscription } from 'rxjs';
 import { JobsStore } from '@core/store/jobs.store';
 import { ToastService } from '@core/services/toast.service';
 import { JOB_STATUSES, JobStatus } from '@core/models/job.model';
+
+const ALL_COLUMNS = ['select', 'priority', 'company', 'role', 'status', 'salary', 'source', 'createdAt', 'actions'] as const;
+const TABLET_COLUMNS = ['select', 'priority', 'company', 'role', 'status', 'actions'] as const;
+const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
 
 @Component({
   selector: 'app-jobs-list',
@@ -41,7 +46,7 @@ import { JOB_STATUSES, JobStatus } from '@core/models/job.model';
       </div>
 
       <!-- Filters -->
-      <div class="flex gap-3 flex-wrap mb-4">
+      <div class="flex gap-3 flex-wrap mb-4 [&>mat-form-field]:flex-shrink-0">
         <mat-form-field appearance="outline" class="flex-1 min-w-[200px]">
           <mat-label>Search</mat-label>
           <input matInput [formControl]="searchCtrl" placeholder="Company, role, tech…">
@@ -171,8 +176,8 @@ import { JOB_STATUSES, JobStatus } from '@core/models/job.model';
           </td>
         </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+        <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns();"
             class="job-row" [routerLink]="['/jobs', row.id]"></tr>
       </table>
 
@@ -242,15 +247,24 @@ import { JOB_STATUSES, JobStatus } from '@core/models/job.model';
     }
   `],
 })
-export class JobsListComponent implements OnInit {
+export class JobsListComponent implements OnInit, OnDestroy {
   readonly store = inject(JobsStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly breakpointObserver = inject(BreakpointObserver);
+  private bpSub?: Subscription;
 
   readonly statuses = JOB_STATUSES;
-  readonly displayedColumns = ['select', 'priority', 'company', 'role', 'status', 'salary', 'source', 'createdAt', 'actions'];
+  readonly isMobile = signal(false);
+  readonly isTablet = signal(false);
+
+  readonly displayedColumns = computed(() => {
+    if (this.isMobile()) return [...MOBILE_COLUMNS];
+    if (this.isTablet()) return [...TABLET_COLUMNS];
+    return [...ALL_COLUMNS];
+  });
 
   searchCtrl = new FormControl('');
   selectedStatus = '';
@@ -282,6 +296,13 @@ export class JobsListComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.bpSub = this.breakpointObserver
+      .observe(['(max-width: 599px)', '(max-width: 959px)'])
+      .subscribe(result => {
+        this.isMobile.set(result.breakpoints['(max-width: 599px)']);
+        this.isTablet.set(!result.breakpoints['(max-width: 599px)'] && result.breakpoints['(max-width: 959px)']);
+      });
+
     const params = this.route.snapshot.queryParams;
     const saved = this.store.filters();
     this.searchCtrl.setValue(params['search'] ?? '', { emitEvent: false });
@@ -400,5 +421,9 @@ export class JobsListComponent implements OnInit {
 
   statusClass(status: string): string {
     return `status-badge status-${status.toLowerCase().replace(/\s+/g, '-')}`;
+  }
+
+  ngOnDestroy() {
+    this.bpSub?.unsubscribe();
   }
 }

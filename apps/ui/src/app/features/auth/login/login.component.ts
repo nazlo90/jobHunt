@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -95,9 +95,13 @@ import { environment } from '../../../../environments/environment';
     .auth-links a:hover { text-decoration: underline; }
   `],
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   protected readonly authStore = inject(AuthStore);
   protected readonly showPwd = signal(false);
+
+  ngOnInit(): void {
+    this.authStore.clearError();
+  }
   protected readonly googleUrl = `${environment.apiBaseUrl}/auth/google`;
 
   protected readonly form = inject(FormBuilder).group({
