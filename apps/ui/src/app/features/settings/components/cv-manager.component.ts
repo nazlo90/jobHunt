@@ -149,7 +149,8 @@ export class CvManagerComponent implements OnInit {
         },
         complete: () => this.uploading.set(false),
       });
-    } catch {
+    } catch (err) {
+      console.error('PDF parse error:', err);
       this.toast.error('Failed to parse PDF');
       this.uploading.set(false);
     }
