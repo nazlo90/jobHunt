@@ -120,7 +120,7 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
                 }
               }
             </mat-card-content>
-            <mat-card-actions class="flex items-center gap-2 flex-wrap !px-4 !pb-3">
+            <mat-card-actions class="flex items-center gap-2 flex-wrap !px-4 !pb-3 mt-4">
               <mat-form-field appearance="outline" class="w-44" subscriptSizing="dynamic">
                 <mat-label>Profile</mat-label>
                 <mat-select [(value)]="selectedProfileId">
