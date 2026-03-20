@@ -71,6 +71,11 @@ export class UsersService {
     return this.usersRepo.save(newUser);
   }
 
+  async updateProfile(userId: number, data: { name?: string; avatarUrl?: string }): Promise<User> {
+    await this.usersRepo.update(userId, data);
+    return this.usersRepo.findOneOrFail({ where: { id: userId } });
+  }
+
   async updatePassword(userId: number, passwordHash: string): Promise<void> {
     await this.usersRepo.update(userId, { passwordHash });
   }

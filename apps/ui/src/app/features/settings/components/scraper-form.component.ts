@@ -27,31 +27,40 @@ import { ArrayField, ALL_SOURCES } from '@core/constants/scraper.const';
     MatIconModule, MatDividerModule, MatProgressSpinnerModule,
   ],
   template: `
-    <form [formGroup]="form" (ngSubmit)="save()">
+    <form [formGroup]="form" (ngSubmit)="save()" class="overflow-x-hidden">
 
       <!-- Search Terms -->
       <mat-card class="mb-5">
-        <mat-card-header><mat-card-title>Search Terms</mat-card-title></mat-card-header>
-        <mat-card-content>
-          <p class="text-xs text-slate-400 mb-2">LinkedIn will be searched for each of these terms.</p>
-          <mat-chip-grid #searchGrid>
-            @for (term of chips['searchTerms'](); track term) {
-              <mat-chip-row (removed)="removeChip('searchTerms', term)">
-                {{ term }}<button matChipRemove><mat-icon>cancel</mat-icon></button>
-              </mat-chip-row>
-            }
-            <input placeholder="Add search term…" [matChipInputFor]="searchGrid"
-              [matChipInputSeparatorKeyCodes]="separatorKeys"
-              (matChipInputTokenEnd)="addChip('searchTerms', $event)" />
-          </mat-chip-grid>
+        <mat-card-header>
+          <mat-card-title>Search Terms</mat-card-title>
+          <mat-card-subtitle>Each term is searched separately on LinkedIn and other platforms.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content class="!pt-3">
+          <div class="field-wrap">
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Search Terms</mat-label>
+              <mat-chip-grid #searchGrid class="w-full">
+                @for (term of chips['searchTerms'](); track term) {
+                  <mat-chip-row (removed)="removeChip('searchTerms', term)">
+                    {{ term }}<button matChipRemove><mat-icon>cancel</mat-icon></button>
+                  </mat-chip-row>
+                }
+                <input placeholder="e.g. Senior Frontend Developer…"
+                  [matChipInputFor]="searchGrid"
+                  [matChipInputSeparatorKeyCodes]="separatorKeys"
+                  (matChipInputTokenEnd)="addChip('searchTerms', $event)" />
+              </mat-chip-grid>
+              <mat-hint>Type a term and press <kbd class="kbd">Enter</kbd> or <kbd class="kbd">,</kbd> to add it. Click × to remove.</mat-hint>
+            </mat-form-field>
+          </div>
         </mat-card-content>
       </mat-card>
 
       <!-- Filters -->
       <mat-card class="mb-5">
         <mat-card-header><mat-card-title>Filters</mat-card-title></mat-card-header>
-        <mat-card-content class="flex flex-col gap-3">
-          <div class="flex gap-4 flex-wrap">
+        <mat-card-content class="!pt-3">
+          <div class="flex gap-4 flex-wrap mb-3">
             <mat-form-field appearance="outline" class="w-44">
               <mat-label>Min Salary</mat-label>
               <input matInput type="number" formControlName="minSalary" min="0">
@@ -74,69 +83,89 @@ import { ArrayField, ALL_SOURCES } from '@core/constants/scraper.const';
 
       <!-- Keywords -->
       <mat-card class="mb-5">
-        <mat-card-header><mat-card-title>Keywords</mat-card-title></mat-card-header>
-        <mat-card-content>
-          <p class="text-[13px] font-semibold text-slate-600 mb-1">Strong Keywords</p>
-          <p class="text-xs text-slate-400 mb-2">Jobs matching these score higher.</p>
-          <mat-chip-grid #strongGrid>
-            @for (kw of chips['strongKeywords'](); track kw) {
-              <mat-chip-row (removed)="removeChip('strongKeywords', kw)">
-                {{ kw }}<button matChipRemove><mat-icon>cancel</mat-icon></button>
-              </mat-chip-row>
-            }
-            <input placeholder="Add keyword…" [matChipInputFor]="strongGrid"
-              [matChipInputSeparatorKeyCodes]="separatorKeys"
-              (matChipInputTokenEnd)="addChip('strongKeywords', $event)" />
-          </mat-chip-grid>
-
-          <mat-divider class="!my-5" />
-
-          <p class="text-[13px] font-semibold text-slate-600 mb-1">Additional Keywords</p>
-          <p class="text-xs text-slate-400 mb-2">Secondary keywords used in scoring.</p>
-          <mat-chip-grid #additionalGrid>
-            @for (kw of chips['additionalKeywords'](); track kw) {
-              <mat-chip-row (removed)="removeChip('additionalKeywords', kw)">
-                {{ kw }}<button matChipRemove><mat-icon>cancel</mat-icon></button>
-              </mat-chip-row>
-            }
-            <input placeholder="Add keyword…" [matChipInputFor]="additionalGrid"
-              [matChipInputSeparatorKeyCodes]="separatorKeys"
-              (matChipInputTokenEnd)="addChip('additionalKeywords', $event)" />
-          </mat-chip-grid>
+        <mat-card-header>
+          <mat-card-title>Keywords</mat-card-title>
+          <mat-card-subtitle>Used to score and rank jobs by relevance.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content class="!pt-3">
+          <div class="field-wrap">
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Strong Keywords</mat-label>
+              <mat-chip-grid #strongGrid class="w-full">
+                @for (kw of chips['strongKeywords'](); track kw) {
+                  <mat-chip-row (removed)="removeChip('strongKeywords', kw)">
+                    {{ kw }}<button matChipRemove><mat-icon>cancel</mat-icon></button>
+                  </mat-chip-row>
+                }
+                <input placeholder="e.g. TypeScript, React…"
+                  [matChipInputFor]="strongGrid"
+                  [matChipInputSeparatorKeyCodes]="separatorKeys"
+                  (matChipInputTokenEnd)="addChip('strongKeywords', $event)" />
+              </mat-chip-grid>
+              <mat-hint>Jobs matching these keywords get a higher relevance score. Press <kbd class="kbd">Enter</kbd> or <kbd class="kbd">,</kbd> to add.</mat-hint>
+            </mat-form-field>
+          </div>
+          <div class="field-wrap">
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Additional Keywords</mat-label>
+              <mat-chip-grid #additionalGrid class="w-full">
+                @for (kw of chips['additionalKeywords'](); track kw) {
+                  <mat-chip-row (removed)="removeChip('additionalKeywords', kw)">
+                    {{ kw }}<button matChipRemove><mat-icon>cancel</mat-icon></button>
+                  </mat-chip-row>
+                }
+                <input placeholder="e.g. GraphQL, Node.js…"
+                  [matChipInputFor]="additionalGrid"
+                  [matChipInputSeparatorKeyCodes]="separatorKeys"
+                  (matChipInputTokenEnd)="addChip('additionalKeywords', $event)" />
+              </mat-chip-grid>
+              <mat-hint>Secondary keywords — still boost score, but less than strong keywords.</mat-hint>
+            </mat-form-field>
+          </div>
         </mat-card-content>
       </mat-card>
 
       <!-- Exclusions -->
       <mat-card class="mb-5">
-        <mat-card-header><mat-card-title>Exclusions</mat-card-title></mat-card-header>
-        <mat-card-content>
-          <p class="text-[13px] font-semibold text-slate-600 mb-1">Exclude by Title</p>
-          <p class="text-xs text-slate-400 mb-2">Jobs whose title contains any of these will be filtered out.</p>
-          <mat-chip-grid #excludeTitleGrid>
-            @for (kw of chips['excludeTitle'](); track kw) {
-              <mat-chip-row (removed)="removeChip('excludeTitle', kw)">
-                {{ kw }}<button matChipRemove><mat-icon>cancel</mat-icon></button>
-              </mat-chip-row>
-            }
-            <input placeholder="Add title exclusion…" [matChipInputFor]="excludeTitleGrid"
-              [matChipInputSeparatorKeyCodes]="separatorKeys"
-              (matChipInputTokenEnd)="addChip('excludeTitle', $event)" />
-          </mat-chip-grid>
-
-          <mat-divider class="!my-5" />
-
-          <p class="text-[13px] font-semibold text-slate-600 mb-1">Exclude Keywords</p>
-          <p class="text-xs text-slate-400 mb-2">Jobs whose description contains these will be filtered out.</p>
-          <mat-chip-grid #excludeKwGrid>
-            @for (kw of chips['excludeKeywords'](); track kw) {
-              <mat-chip-row (removed)="removeChip('excludeKeywords', kw)">
-                {{ kw }}<button matChipRemove><mat-icon>cancel</mat-icon></button>
-              </mat-chip-row>
-            }
-            <input placeholder="Add keyword exclusion…" [matChipInputFor]="excludeKwGrid"
-              [matChipInputSeparatorKeyCodes]="separatorKeys"
-              (matChipInputTokenEnd)="addChip('excludeKeywords', $event)" />
-          </mat-chip-grid>
+        <mat-card-header>
+          <mat-card-title>Exclusions</mat-card-title>
+          <mat-card-subtitle>Jobs matching these will be filtered out before saving.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content class="!pt-3">
+          <div class="field-wrap">
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Exclude by Job Title</mat-label>
+              <mat-chip-grid #excludeTitleGrid class="w-full">
+                @for (kw of chips['excludeTitle'](); track kw) {
+                  <mat-chip-row (removed)="removeChip('excludeTitle', kw)">
+                    {{ kw }}<button matChipRemove><mat-icon>cancel</mat-icon></button>
+                  </mat-chip-row>
+                }
+                <input placeholder="e.g. junior, intern, manager…"
+                  [matChipInputFor]="excludeTitleGrid"
+                  [matChipInputSeparatorKeyCodes]="separatorKeys"
+                  (matChipInputTokenEnd)="addChip('excludeTitle', $event)" />
+              </mat-chip-grid>
+              <mat-hint>Jobs whose title contains any of these words will be skipped. Press <kbd class="kbd">Enter</kbd> or <kbd class="kbd">,</kbd> to add.</mat-hint>
+            </mat-form-field>
+          </div>
+          <div class="field-wrap">
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>Exclude by Description Keyword</mat-label>
+              <mat-chip-grid #excludeKwGrid class="w-full">
+                @for (kw of chips['excludeKeywords'](); track kw) {
+                  <mat-chip-row (removed)="removeChip('excludeKeywords', kw)">
+                    {{ kw }}<button matChipRemove><mat-icon>cancel</mat-icon></button>
+                  </mat-chip-row>
+                }
+                <input placeholder="e.g. WordPress, Ruby, Golang…"
+                  [matChipInputFor]="excludeKwGrid"
+                  [matChipInputSeparatorKeyCodes]="separatorKeys"
+                  (matChipInputTokenEnd)="addChip('excludeKeywords', $event)" />
+              </mat-chip-grid>
+              <mat-hint>Jobs whose description contains these words will be skipped.</mat-hint>
+            </mat-form-field>
+          </div>
         </mat-card-content>
       </mat-card>
 
@@ -169,6 +198,11 @@ import { ArrayField, ALL_SOURCES } from '@core/constants/scraper.const';
 
     </form>
   `,
+  styles: [`
+    .field-wrap { display: block; width: 100%; min-width: 0; overflow: hidden; margin-bottom: 20px; }
+    .field-wrap:last-child { margin-bottom: 0; }
+    .field-wrap mat-form-field { display: block; }
+  `],
 })
 export class ScraperFormComponent {
   private readonly profileSvc = inject(ScraperProfileService);

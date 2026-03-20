@@ -209,6 +209,25 @@ export class AuthService {
       provider: user.provider,
     };
   }
+
+  // ─── Update Profile ────────────────────────────────────────────────────────
+
+  async updateProfile(userId: number, data: { name?: string; avatarUrl?: string }) {
+    const updated = await this.users.updateProfile(userId, data);
+    return this.me(updated);
+  }
+
+  // ─── Change Password ───────────────────────────────────────────────────────
+
+  async changePassword(user: User, currentPassword: string, newPassword: string): Promise<void> {
+    if (!user.passwordHash) {
+      throw new BadRequestException('Password change is not available for social login accounts.');
+    }
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) throw new BadRequestException('Current password is incorrect.');
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.users.updatePassword(user.id, passwordHash);
+  }
 }
 
 function sha256(data: string): string {

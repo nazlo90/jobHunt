@@ -4,12 +4,24 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   Res,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { IsOptional, IsString, MinLength } from 'class-validator';
+
+class UpdateProfileDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() avatarUrl?: string;
+}
+
+class ChangePasswordDto {
+  @IsString() currentPassword!: string;
+  @IsString() @MinLength(8) newPassword!: string;
+}
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -121,6 +133,29 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: User) {
     return this.auth.me(user);
+  }
+
+  // ─── Update Profile ────────────────────────────────────────────────────────
+
+  @Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  updateProfile(
+    @CurrentUser() user: User,
+    @Body() body: UpdateProfileDto,
+  ) {
+    return this.auth.updateProfile(user.id, body);
+  }
+
+  // ─── Change Password ───────────────────────────────────────────────────────
+
+  @Patch('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentUser() user: User,
+    @Body() body: ChangePasswordDto,
+  ) {
+    await this.auth.changePassword(user, body.currentPassword, body.newPassword);
+    return { ok: true };
   }
 
   // ─── Forgot / Reset password ───────────────────────────────────────────────

@@ -1,8 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import { ScraperProfile } from './scraper-profile.entity';
 import { CreateScraperProfileDto } from './create-scraper-profile.dto';
 import { UpdateScraperProfileDto } from './update-scraper-profile.dto';
@@ -21,7 +19,12 @@ export class ScraperProfileService {
   ) {}
 
   async list(userId: number): Promise<ScraperProfile[]> {
-    return this.repo.find({ where: { userId }, order: { createdAt: 'ASC' } });
+    const profiles = await this.repo.find({ where: { userId }, order: { createdAt: 'ASC' } });
+    if (profiles.length === 0) {
+      const seeded = await this.seedForUser(userId);
+      return [seeded];
+    }
+    return profiles;
   }
 
   async getActive(userId?: number): Promise<ScraperProfile> {
@@ -103,26 +106,19 @@ export class ScraperProfileService {
   }
 
   async seedForUser(userId: number): Promise<ScraperProfile> {
-    let cfg: Record<string, any> = {};
-    try {
-      const filePath = join(process.cwd(), '../../config.json');
-      cfg = JSON.parse(readFileSync(filePath, 'utf8'));
-    } catch {
-      // use defaults
-    }
     return this.repo.save(this.repo.create({
       userId,
       name: 'Default',
       isActive: true,
-      searchTerms: cfg.searchTerms ?? [],
-      minSalary: cfg.minSalary ?? 0,
-      remoteOnly: cfg.remoteOnly ?? true,
-      strongKeywords: cfg.strongKeywords ?? [],
-      additionalKeywords: cfg.additionalKeywords ?? [],
-      excludeTitle: cfg.excludeTitle ?? [],
-      excludeKeywords: cfg.excludeKeywords ?? [],
-      requireStrongMatch: cfg.requireStrongMatch ?? true,
-      minScore: cfg.minScore ?? 2,
+      searchTerms: [],
+      minSalary: 0,
+      remoteOnly: true,
+      strongKeywords: [],
+      additionalKeywords: [],
+      excludeTitle: [],
+      excludeKeywords: [],
+      requireStrongMatch: false,
+      minScore: 2,
       enabledSources: ALL_SOURCES,
     }));
   }

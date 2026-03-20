@@ -90,6 +90,9 @@ Thumbs.db
 # Angular build cache
 apps/ui/.angular/
 
+# Angular build output (served by NestJS in prod, built on deploy)
+apps/api/public/browser/
+
 # NestJS compiled output (TypeScript build info)
 apps/api/tsconfig.build.tsbuildinfo
 

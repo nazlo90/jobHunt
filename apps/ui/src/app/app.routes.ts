@@ -72,10 +72,16 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'settings',
+        path: 'configurations',
         loadComponent: () =>
-          import('./features/settings/settings.component').then((m) => m.SettingsComponent),
+          import('./features/configurations/configurations.component').then((m) => m.ConfigurationsComponent),
       },
+      {
+        path: 'settings',
+        redirectTo: 'configurations',
+        pathMatch: 'full',
+      },
+
     ],
   },
 ];

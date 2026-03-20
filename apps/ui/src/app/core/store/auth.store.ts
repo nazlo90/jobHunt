@@ -234,6 +234,31 @@ export const AuthStore = signalStore(
         }
       },
 
+      async updateProfile(data: { name?: string; avatarUrl?: string }): Promise<void> {
+        try {
+          const user = await firstValueFrom(
+            http.patch<AuthUser>(`${API}/auth/profile`, data),
+          );
+          patchState(store, { user });
+        } catch (err: unknown) {
+          setError(getErrorMessage(err));
+          throw err;
+        }
+      },
+
+      async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+        setLoading(true);
+        setError(null);
+        try {
+          await firstValueFrom(http.patch(`${API}/auth/change-password`, { currentPassword, newPassword }));
+        } catch (err: unknown) {
+          setError(getErrorMessage(err));
+          throw err;
+        } finally {
+          setLoading(false);
+        }
+      },
+
       async resetPassword(req: ResetPasswordRequest): Promise<boolean> {
         setLoading(true);
         setError(null);

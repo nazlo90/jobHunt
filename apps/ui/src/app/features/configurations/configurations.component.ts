@@ -1,91 +1,102 @@
 import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MatCardModule } from '@angular/material/card';
-import { MatDividerModule } from '@angular/material/divider';
+import { ActivatedRoute } from '@angular/router';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ScraperProfileService } from '@core/services/scraper-profile.service';
 import { ToastService } from '@core/services/toast.service';
 import { ScraperProfile } from '@core/models/scraper-profile.model';
-import { CvManagerComponent } from './components/cv-manager.component';
-import { ProfileSelectorComponent } from './components/profile-selector.component';
-import { ScraperFormComponent } from './components/scraper-form.component';
+import { CvManagerComponent } from '../settings/components/cv-manager.component';
+import { ProfileSelectorComponent } from '../settings/components/profile-selector.component';
+import { ScraperFormComponent } from '../settings/components/scraper-form.component';
 
 @Component({
-  selector: 'app-settings',
+  selector: 'app-configurations',
   imports: [
-    MatCardModule, MatDividerModule, MatProgressSpinnerModule,
+    MatTabsModule, MatProgressSpinnerModule,
     CvManagerComponent, ProfileSelectorComponent, ScraperFormComponent,
   ],
   template: `
     <div>
-
-      <!-- Header -->
       <div class="mb-6">
-        <h1 class="text-2xl font-bold text-slate-900 m-0">Settings</h1>
+        <h1 class="text-2xl font-bold text-slate-900 m-0">Configurations</h1>
         <p class="text-sm text-slate-500 mt-1">Manage your CVs and configure the job scraper.</p>
       </div>
 
-      <!-- My CVs -->
-      <mat-card class="mb-5">
-        <mat-card-header>
-          <mat-card-title>My CVs</mat-card-title>
-          <mat-card-subtitle>Upload PDF CVs to use in the CV Adapter.</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content class="!pt-3">
-          <app-cv-manager />
-        </mat-card-content>
-      </mat-card>
+      <mat-tab-group animationDuration="150ms" class="configs-tabs" [selectedIndex]="activeTab()">
 
-      <mat-divider class="!my-6" />
+        <!-- ── Tab 1: My CVs ── -->
+        <mat-tab label="My CVs">
+          <div class="py-5">
+            <p class="text-sm text-slate-500 mb-6">
+              Upload your CV as a PDF. The CV Adapter uses it to generate tailored applications for each job.
+              You can upload multiple CVs (e.g. one per role type) and choose which to use per job.
+            </p>
+            <app-cv-manager />
+          </div>
+        </mat-tab>
 
-      <!-- Scraper Profiles -->
-      <mat-card class="mb-5">
-        <mat-card-header>
-          <mat-card-title>Scraper Profiles</mat-card-title>
-          <mat-card-subtitle>
-            Each profile has its own search terms, keywords, and filters.
-            The active profile is used when you run the scraper.
-          </mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content class="!pt-4">
-          @if (profilesLoading()) {
-            <div class="flex justify-center py-8">
-              <mat-spinner diameter="32" />
-            </div>
-          } @else {
-            <app-profile-selector
-              [profiles]="profiles()"
-              [selected]="selectedProfile()"
-              [activating]="activating()"
-              (profileSelected)="selectProfile($event)"
-              (newProfile)="promptNewProfile()"
-              (duplicateProfile)="promptDuplicateProfile()"
-              (renameProfile)="promptRenameProfile()"
-              (deleteProfile)="deleteProfile()" />
-          }
-        </mat-card-content>
-      </mat-card>
+        <!-- ── Tab 2: Scraper Profiles ── -->
+        <mat-tab label="Scraper Profiles">
+          <div class="py-5">
+            <p class="text-sm text-slate-500 mb-6">
+              Profiles let you save different search configurations — e.g. one for frontend roles, another for fullstack.
+              Selecting a profile makes it active; the scraper always uses the active profile.
+            </p>
 
-      <!-- Scraper Form (per profile) -->
-      @if (!profilesLoading() && selectedProfile()) {
-        <app-scraper-form
-          [profile]="selectedProfile()!"
-          (profileUpdated)="onProfileUpdated($event)" />
-      }
+            @if (profilesLoading()) {
+              <div class="flex justify-center py-10">
+                <mat-spinner diameter="32" />
+              </div>
+            } @else {
+              <app-profile-selector
+                [profiles]="profiles()"
+                [selected]="selectedProfile()"
+                [activating]="activating()"
+                (profileSelected)="selectAndActivate($event)"
+                (newProfile)="promptNewProfile()"
+                (duplicateProfile)="promptDuplicateProfile()"
+                (renameProfile)="promptRenameProfile()"
+                (deleteProfile)="deleteProfile()" />
+
+              @if (selectedProfile()) {
+                <div class="mt-5">
+                  <app-scraper-form
+                    [profile]="selectedProfile()!"
+                    (profileUpdated)="onProfileUpdated($event)" />
+                </div>
+              }
+            }
+          </div>
+        </mat-tab>
+
+      </mat-tab-group>
     </div>
   `,
+  styles: [`
+    :host ::ng-deep .configs-tabs {
+      .mat-mdc-tab-body-wrapper { padding-top: 0; }
+      .mat-mdc-tab-body-content { overflow-x: hidden; }
+    }
+  `],
 })
-export class SettingsComponent implements OnInit {
+export class ConfigurationsComponent implements OnInit {
   private readonly profileSvc = inject(ScraperProfileService);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
 
   readonly profiles = signal<ScraperProfile[]>([]);
   readonly selectedProfile = signal<ScraperProfile | null>(null);
   readonly profilesLoading = signal(true);
   readonly activating = signal(false);
+  readonly activeTab = signal(0);
 
   ngOnInit() {
+    // Read ?tab=scraper to open the Scraper Profiles tab directly
+    const tab = this.route.snapshot.queryParamMap.get('tab');
+    if (tab === 'scraper') this.activeTab.set(1);
+
     this.loadProfiles();
   }
 
@@ -101,16 +112,15 @@ export class SettingsComponent implements OnInit {
     });
   }
 
-  selectProfile(id: number) {
+  /** Selecting a profile immediately activates it */
+  selectAndActivate(id: number) {
     const profile = this.profiles().find(p => p.id === id);
-    if (profile) this.selectedProfile.set(profile);
-  }
-
-  activateProfile() {
-    const profile = this.selectedProfile();
-    if (!profile) return;
+    if (!profile || profile.isActive) {
+      if (profile) this.selectedProfile.set(profile);
+      return;
+    }
     this.activating.set(true);
-    this.profileSvc.activate(profile.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.profileSvc.activate(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ profile: updated }) => {
         this.profiles.update(list => list.map(p => ({ ...p, isActive: p.id === updated.id })));
         this.selectedProfile.set(updated);
@@ -127,7 +137,7 @@ export class SettingsComponent implements OnInit {
     this.profileSvc.create(name.trim()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ profile }) => {
         this.profiles.update(list => [...list, profile]);
-        this.selectedProfile.set(profile);
+        this.selectAndActivate(profile.id);
         this.toast.success(`Profile "${profile.name}" created`);
       },
     });
