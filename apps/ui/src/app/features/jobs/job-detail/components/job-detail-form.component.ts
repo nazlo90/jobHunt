@@ -21,7 +21,7 @@ import { FormFields } from './job-detail-form.model';
   template: `
     <div class="flex flex-col gap-1 py-5">
 
-      <div class="grid grid-cols-2 gap-x-4 min-w-0 overflow-hidden">
+      <div class="grid grid-cols-2 gap-x-4 min-w-0 overflow-hidden pt-4">
 
         <mat-form-field appearance="outline">
           <mat-label>Company</mat-label>

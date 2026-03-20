@@ -36,7 +36,7 @@ const PDF_SECTION_NAMES = [
   'COURSES', 'CERTIFICATIONS', 'ACHIEVEMENTS', 'PROJECTS',
 ].sort((a, b) => b.length - a.length);
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
 
 @Component({
   selector: 'app-cv-manager',

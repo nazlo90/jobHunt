@@ -33,7 +33,7 @@ import { buildCvHtml } from '@shared/cv-html.utils';
       <div class="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4">
         @if (userCvs().length === 0) {
           <div class="flex items-center gap-2 text-sm text-slate-500">
-            <mat-icon class="!text-lg !w-[18px] !h-[18px]">info_outline</mat-icon>
+            <mat-icon>info_outline</mat-icon>
             <span>No CVs uploaded yet. Go to <a routerLink="/settings" class="text-violet-600">Settings</a> to add one.</span>
           </div>
         } @else {

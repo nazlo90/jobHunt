@@ -199,7 +199,7 @@ import { ArrayField, ALL_SOURCES } from '@core/constants/scraper.const';
     </form>
   `,
   styles: [`
-    .field-wrap { display: block; width: 100%; min-width: 0; overflow: hidden; margin-bottom: 20px; }
+    .field-wrap { display: block; width: 100%; min-width: 0; overflow: hidden; margin-bottom: 20px; padding-top: 10px; }
     .field-wrap:last-child { margin-bottom: 0; }
     .field-wrap mat-form-field { display: block; }
   `],

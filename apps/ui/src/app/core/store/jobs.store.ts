@@ -34,14 +34,13 @@ export const JobsStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
 
-  withComputed(({ total, stats, scraperStatus, scraperStopping }) => ({
+  withComputed(({ total, stats, scraperStatus }) => ({
     totalJobs: computed(() => total()),
     sources: computed(() => (stats()?.bySource ?? []).map((s) => s.source).sort()),
     pipeline: computed(() => stats()?.pipeline ?? 0),
     offers: computed(() => stats()?.offers ?? 0),
     thisWeek: computed(() => stats()?.thisWeek ?? 0),
     scraperRunning: computed(() => scraperStatus()?.running ?? false),
-    scraperStopping: computed(() => scraperStopping()),
   })),
 
   withMethods((store, http = inject(HttpClient)) => {
