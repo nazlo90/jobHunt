@@ -32,7 +32,7 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
         <div class="mb-6 rounded-xl border border-violet-200 bg-violet-50 p-5">
           <div class="flex items-start gap-3 mb-4">
             <div class="w-9 h-9 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
-              <mat-icon class="!text-white !text-[18px]">rocket_launch</mat-icon>
+              <mat-icon class="!text-white">rocket_launch</mat-icon>
             </div>
             <div>
               <p class="font-semibold text-slate-900 m-0">Get started with JobHunt</p>
