@@ -122,9 +122,9 @@ jobs:
             mv .env.tmp .env
             chmod 600 .env   # readable only by the deploy user
 
-            # ── Stop old container (frees port 3000) then rebuild and start ──
-            sudo docker compose down
-            sudo docker compose up -d --build --remove-orphans
+            # ── Force-remove any container holding port 3000, then rebuild and start ──
+            sudo docker ps -q --filter "publish=3000" | xargs -r sudo docker rm -f
+            sudo docker compose -p jobhunt up -d --build --remove-orphans
 
             # ── Clean up dangling images to save disk space ──
             sudo docker image prune -f
