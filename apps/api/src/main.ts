@@ -24,6 +24,7 @@ async function bootstrap() {
       },
       crossOriginEmbedderPolicy: false,
       crossOriginOpenerPolicy: false,
+      originAgentCluster: false,
     }),
   );
   app.use(cookieParser());
