@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
+import { Component, OnInit, inject, signal, DestroyRef, isDevMode } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,7 +36,9 @@ const PDF_SECTION_NAMES = [
   'COURSES', 'CERTIFICATIONS', 'ACHIEVEMENTS', 'PROJECTS',
 ].sort((a, b) => b.length - a.length);
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = isDevMode()
+  ? new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href
+  : '/assets/pdf.worker.min.mjs';
 
 @Component({
   selector: 'app-cv-manager',
