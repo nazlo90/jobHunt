@@ -77,7 +77,8 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          BREVO_SMTP_USER: ${{ secrets.BREVO_SMTP_USER }}
+          BREVO_SMTP_PASS: ${{ secrets.BREVO_SMTP_PASS }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
@@ -89,7 +90,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: JWT_SECRET,JWT_REFRESH_SECRET,GROQ_API_KEY,RESEND_API_KEY,EMAIL_FROM,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,ANTHROPIC_API_KEY,FRONTEND_URL,GOOGLE_CALLBACK_URL
+          envs: JWT_SECRET,JWT_REFRESH_SECRET,GROQ_API_KEY,BREVO_SMTP_USER,BREVO_SMTP_PASS,EMAIL_FROM,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,ANTHROPIC_API_KEY,FRONTEND_URL,GOOGLE_CALLBACK_URL
           # Generous timeout — docker compose build takes a few minutes on a VPS
           command_timeout: 10m
           script: |
@@ -111,7 +112,8 @@ jobs:
               printf 'JWT_REFRESH_SECRET=%s\n'   "$JWT_REFRESH_SECRET"
               printf 'REFRESH_TOKEN_EXPIRY_DAYS=7\n'
               printf 'GROQ_API_KEY=%s\n'         "$GROQ_API_KEY"
-              printf 'RESEND_API_KEY=%s\n'       "$RESEND_API_KEY"
+              printf 'BREVO_SMTP_USER=%s\n'       "$BREVO_SMTP_USER"
+              printf 'BREVO_SMTP_PASS=%s\n'       "$BREVO_SMTP_PASS"
               printf 'EMAIL_FROM=%s\n'           "$EMAIL_FROM"
               printf 'GOOGLE_CLIENT_ID=%s\n'     "$GOOGLE_CLIENT_ID"
               printf 'GOOGLE_CLIENT_SECRET=%s\n' "$GOOGLE_CLIENT_SECRET"
