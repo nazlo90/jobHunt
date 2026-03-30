@@ -1,26 +1,34 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Resend } from 'resend';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private readonly resend: Resend | null;
+  private readonly transporter: nodemailer.Transporter | null;
   private readonly from: string;
   private readonly frontendUrl: string;
 
   constructor(private readonly config: ConfigService) {
-    const apiKey = this.config.get<string>('RESEND_API_KEY');
-    this.resend = apiKey ? new Resend(apiKey) : null;
+    const user = this.config.get<string>('BREVO_SMTP_USER');
+    const pass = this.config.get<string>('BREVO_SMTP_PASS');
     this.from = this.config.get<string>('EMAIL_FROM', 'noreply@jobhunt.app');
     this.frontendUrl = this.config.get<string>(
       'FRONTEND_URL',
       'http://localhost:4200',
     );
 
-    if (!this.resend) {
+    if (user && pass) {
+      this.transporter = nodemailer.createTransport({
+        host: 'smtp-relay.brevo.com',
+        port: 587,
+        secure: false,
+        auth: { user, pass },
+      });
+    } else {
+      this.transporter = null;
       this.logger.warn(
-        'RESEND_API_KEY not set — emails will be logged to console only',
+        'BREVO_SMTP_USER / BREVO_SMTP_PASS not set — emails will be logged to console only',
       );
     }
   }
@@ -48,17 +56,19 @@ export class EmailService {
   }
 
   private async send(to: string, subject: string, html: string): Promise<void> {
-    if (!this.resend) {
+    if (!this.transporter) {
       this.logger.log(
         `[EMAIL] To: ${to} | Subject: ${subject}\n${html.replace(/<[^>]+>/g, '')}`,
       );
       return;
     }
 
-    const { error } = await this.resend.emails.send({ from: this.from, to, subject, html });
-    if (error) {
-      this.logger.error(`Failed to send email to ${to}: ${JSON.stringify(error)}`);
-      throw new Error(error.message);
+    try {
+      const info = await this.transporter.sendMail({ from: this.from, to, subject, html });
+      this.logger.log(`Email sent to ${to}: ${info.messageId}`);
+    } catch (err) {
+      this.logger.error(`Failed to send email to ${to}: ${err.message}`);
+      throw err;
     }
   }
 }

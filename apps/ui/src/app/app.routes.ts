@@ -26,13 +26,6 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'reset-password',
-        loadComponent: () =>
-          import('./features/auth/reset-password/reset-password.component').then(
-            (m) => m.ResetPasswordComponent,
-          ),
-      },
-      {
         path: 'callback',
         loadComponent: () =>
           import('./features/auth/callback/auth-callback.component').then(
@@ -41,6 +34,13 @@ export const routes: Routes = [
       },
       { path: '', redirectTo: 'login', pathMatch: 'full' },
     ],
+  },
+  {
+    path: 'auth/reset-password',
+    loadComponent: () =>
+      import('./features/auth/reset-password/reset-password.component').then(
+        (m) => m.ResetPasswordComponent,
+      ),
   },
 
   // Protected routes — require authentication
