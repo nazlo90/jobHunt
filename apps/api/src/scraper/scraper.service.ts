@@ -35,6 +35,8 @@ export class ScraperService {
   private lastRun: ScraperRun | null = null;
   private running = false;
   private stopRequested = false;
+  private currentPlatform: string | null = null;
+  private platformResults: { name: string; count: number }[] = [];
 
   constructor(
     @InjectRepository(Job)
@@ -43,7 +45,12 @@ export class ScraperService {
   ) {}
 
   getStatus() {
-    return { running: this.running, lastRun: this.lastRun };
+    return {
+      running: this.running,
+      lastRun: this.lastRun,
+      currentPlatform: this.currentPlatform,
+      platformResults: this.platformResults,
+    };
   }
 
   stop() {
@@ -64,6 +71,8 @@ export class ScraperService {
 
     this.running = true;
     this.stopRequested = false;
+    this.currentPlatform = null;
+    this.platformResults = [];
     const run: ScraperRun = {
       startedAt: new Date(),
       total: 0,
@@ -101,9 +110,26 @@ export class ScraperService {
         sourceConfig:       profile.sourceConfig ?? {},
       });
 
-      const allJobs: ScrapedJob[] = [];
+      const allScrapeIds: string[] = [];
       const enabled: string[] = profile.enabledSources ?? [];
       const isEnabled = (name: string) => enabled.length === 0 || enabled.includes(name);
+
+      const runPlatform = async (label: string, fn: () => Promise<ScrapedJob[]>) => {
+        if (this.stopRequested) { this.logger.log('Scraper stopped by user'); return; }
+        this.currentPlatform = label;
+        try {
+          const jobs = await fn();
+          this.logger.log(`${label}: ${jobs.length} jobs`);
+          run.total += jobs.length;
+          await this.insertOrUpdateBatch(jobs, run, userId);
+          allScrapeIds.push(...jobs.map((j) => j.scrapeId));
+          this.platformResults.push({ name: label, count: jobs.length });
+        } catch (err) {
+          run.errors.push(`${label}: ${err.message}`);
+          this.logger.error(`${label} failed: ${err.message}`);
+          this.platformResults.push({ name: label, count: 0 });
+        }
+      };
 
       const runners = [
         { name: 'Djinni',         fn: () => scrapers.scrapeDjinni() },
@@ -119,50 +145,30 @@ export class ScraperService {
       ];
 
       for (const runner of runners) {
-        if (this.stopRequested) { this.logger.log('Scraper stopped by user'); break; }
         if (!isEnabled(runner.name)) {
           this.logger.log(`${runner.name}: skipped (disabled)`);
           continue;
         }
-        try {
-          const jobs = await runner.fn();
-          this.logger.log(`${runner.name}: ${jobs.length} jobs`);
-          allJobs.push(...jobs);
-        } catch (err) {
-          run.errors.push(`${runner.name}: ${err.message}`);
-          this.logger.error(`${runner.name} failed: ${err.message}`);
-        }
+        await runPlatform(runner.name, runner.fn);
       }
 
-      if (!this.stopRequested && isEnabled('LinkedIn')) {
+      if (isEnabled('LinkedIn')) {
         for (const term of profile.searchTerms) {
-          if (this.stopRequested) { this.logger.log('Scraper stopped by user'); break; }
-          try {
-            const jobs = await scrapers.scrapeLinkedIn(term);
-            this.logger.log(`LinkedIn "${term}": ${jobs.length} jobs`);
-            allJobs.push(...jobs);
-          } catch (err) {
-            run.errors.push(`LinkedIn(${term}): ${err.message}`);
-          }
+          await runPlatform(`LinkedIn (${term})`, () => scrapers.scrapeLinkedIn(term));
         }
       }
 
-      if (!this.stopRequested && isEnabled('Greenhouse')) {
+      if (isEnabled('Greenhouse')) {
         const greenhouseCompanies: string[] = profile.sourceConfig?.greenhouseCompanies ?? [];
         for (const company of greenhouseCompanies) {
-          if (this.stopRequested) { this.logger.log('Scraper stopped by user'); break; }
-          try {
-            const jobs = await scrapers.scrapeGreenhouse(company);
-            this.logger.log(`Greenhouse ${company}: ${jobs.length} jobs`);
-            allJobs.push(...jobs);
-          } catch (err) {
-            run.errors.push(`Greenhouse(${company}): ${err.message}`);
-          }
+          await runPlatform(`Greenhouse (${company})`, () => scrapers.scrapeGreenhouse(company));
         }
       }
 
-      run.total = allJobs.length;
-      await this.upsertJobs(allJobs, run, userId);
+      // Archive stale jobs once all platforms are done
+      if (!this.stopRequested && allScrapeIds.length > 0) {
+        await this.archiveStaleJobs(allScrapeIds, run, userId);
+      }
 
       run.finishedAt = new Date();
       this.logger.log(`Scraper done: ${run.inserted} new, ${run.updated} updated from ${run.total} scraped`);
@@ -171,6 +177,7 @@ export class ScraperService {
       this.logger.error(`Scraper fatal error: ${err.message}`);
     } finally {
       this.running = false;
+      this.currentPlatform = null;
     }
 
     return run;
@@ -184,33 +191,35 @@ export class ScraperService {
     return 5;
   }
 
-  private async upsertJobs(rawJobs: ScrapedJob[], run: ScraperRun, userId?: number): Promise<void> {
-    if (rawJobs.length === 0) return;
-
-    // Deduplicate within the current scrape batch — keep first occurrence per scrapeId
-    const seen = new Set<string>();
-    const allJobs = rawJobs.filter((j) => {
-      if (seen.has(j.scrapeId)) return false;
-      seen.add(j.scrapeId);
-      return true;
-    });
-    this.logger.log(`Deduped batch: ${rawJobs.length} → ${allJobs.length} unique jobs`);
-
-    const scrapeIds = allJobs.map((j) => j.scrapeId);
-
+  private async archiveStaleJobs(allScrapeIds: string[], run: ScraperRun, userId?: number): Promise<void> {
+    const uniqueIds = [...new Set(allScrapeIds)];
     const archiveQb = this.jobsRepo
       .createQueryBuilder()
       .update(Job)
       .set({ status: 'Archived' as any })
-      .where('status = :status AND scrape_id NOT IN (:...ids)', { status: 'New', ids: scrapeIds });
+      .where('status = :status AND scrape_id NOT IN (:...ids)', { status: 'New', ids: uniqueIds });
     if (userId != null) {
       archiveQb.andWhere('user_id = :userId', { userId });
     }
     const archiveResult = await archiveQb.execute();
     run.deleted = archiveResult.affected ?? 0;
     this.logger.log(`Archived ${run.deleted} stale New jobs`);
+  }
 
-    // Batch load all existing jobs in one query instead of N findOne calls
+  private async insertOrUpdateBatch(rawJobs: ScrapedJob[], run: ScraperRun, userId?: number): Promise<void> {
+    if (rawJobs.length === 0) return;
+
+    // Deduplicate within this platform batch — keep first occurrence per scrapeId
+    const seen = new Set<string>();
+    const jobs = rawJobs.filter((j) => {
+      if (seen.has(j.scrapeId)) return false;
+      seen.add(j.scrapeId);
+      return true;
+    });
+
+    const scrapeIds = jobs.map((j) => j.scrapeId);
+
+    // Batch load existing jobs
     const existingQb = this.jobsRepo
       .createQueryBuilder('job')
       .where('job.scrape_id IN (:...ids)', { ids: scrapeIds });
@@ -220,12 +229,12 @@ export class ScraperService {
     const existingJobs = await existingQb.getMany();
     const existingMap  = new Map(existingJobs.map((j) => [j.scrapeId, j]));
 
-    // Secondary dedup by company+role — catches cases where scrapeId drifts between runs
+    // Secondary dedup by company+role
     const norm = (s: string) => s.trim().toLowerCase();
-    const jobsWithoutScrapeMatch = allJobs.filter((j) => !existingMap.has(j.scrapeId));
+    const newJobs = jobs.filter((j) => !existingMap.has(j.scrapeId));
     const companyRoleExists = new Set<string>();
-    if (jobsWithoutScrapeMatch.length > 0) {
-      const companies = [...new Set(jobsWithoutScrapeMatch.map((j) => norm(j.company)))];
+    if (newJobs.length > 0) {
+      const companies = [...new Set(newJobs.map((j) => norm(j.company)))];
       const dedupQb = this.jobsRepo
         .createQueryBuilder('job')
         .select(['job.company', 'job.role'])
@@ -239,7 +248,7 @@ export class ScraperService {
       }
     }
 
-    for (const scraped of allJobs) {
+    for (const scraped of jobs) {
       const existing = existingMap.get(scraped.scrapeId);
 
       if (!existing) {
@@ -273,7 +282,6 @@ export class ScraperService {
           }
         }
       } else if (existing.status === 'New') {
-        // Refresh scraped fields for jobs not yet acted on
         await this.jobsRepo.save({
           ...existing,
           company:            scraped.company,

@@ -32,7 +32,7 @@ import { ScraperFormComponent } from './components/scraper-form.component';
           <mat-card-subtitle>Upload PDF CVs to use in the CV Adapter.</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content class="!pt-3">
-          <app-cv-manager />
+          <app-cv-manager (profileAutoFilled)="onProfileAutoFilled($event)" />
         </mat-card-content>
       </mat-card>
 
@@ -179,5 +179,12 @@ export class SettingsComponent implements OnInit {
   onProfileUpdated(updated: ScraperProfile) {
     this.profiles.update(list => list.map(p => p.id === updated.id ? updated : p));
     this.selectedProfile.set(updated);
+  }
+
+  onProfileAutoFilled(updated: ScraperProfile) {
+    this.profiles.update(list => list.map(p => p.id === updated.id ? updated : p));
+    if (this.selectedProfile()?.id === updated.id) {
+      this.selectedProfile.set(updated);
+    }
   }
 }

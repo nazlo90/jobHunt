@@ -142,6 +142,26 @@ export class JobsService {
     await this.jobsRepo.remove(job);
   }
 
+  async bulkDelete(ids: number[], userId: number): Promise<{ deleted: number }> {
+    const result = await this.jobsRepo
+      .createQueryBuilder()
+      .delete()
+      .where('id IN (:...ids) AND userId = :userId', { ids, userId })
+      .execute();
+    return { deleted: result.affected ?? 0 };
+  }
+
+  async bulkUpdateStatus(ids: number[], status: string, userId: number): Promise<{ updated: number; jobs: Job[] }> {
+    await this.jobsRepo
+      .createQueryBuilder()
+      .update()
+      .set({ status: status as Job['status'] })
+      .where('id IN (:...ids) AND userId = :userId', { ids, userId })
+      .execute();
+    const jobs = await this.jobsRepo.findBy(ids.map((id) => ({ id, userId })));
+    return { updated: jobs.length, jobs };
+  }
+
   async autocomplete(url: string): Promise<Partial<CreateJobDto>> {
     const response = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },

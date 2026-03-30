@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import Groq from 'groq-sdk';
+import { jsonrepair } from 'jsonrepair';
 import { ScraperProfile } from './scraper-profile.entity';
 import { CreateScraperProfileDto } from './create-scraper-profile.dto';
 import { UpdateScraperProfileDto } from './update-scraper-profile.dto';
@@ -13,6 +15,8 @@ export const ALL_SOURCES = [
 
 @Injectable()
 export class ScraperProfileService {
+  private readonly groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
   constructor(
     @InjectRepository(ScraperProfile)
     private readonly repo: Repository<ScraperProfile>,
@@ -103,6 +107,57 @@ export class ScraperProfileService {
       throw new BadRequestException('Cannot delete the last remaining profile.');
     }
     await this.repo.delete(id);
+  }
+
+  async extractFromCv(cvText: string, userId: number): Promise<{ profile: ScraperProfile; wasUpdated: boolean }> {
+    const activeProfile = await this.getActive(userId);
+
+    if (activeProfile.searchTerms.length > 0) {
+      return { profile: activeProfile, wasUpdated: false };
+    }
+
+    const completion = await this.groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 1024,
+      response_format: { type: 'json_object' },
+      messages: [{
+        role: 'user',
+        content: `Analyze this CV and extract job search configuration. Return ONLY valid JSON with no markdown, no explanation.
+
+CV (first 6000 chars):
+${cvText.slice(0, 6000)}
+
+Return JSON with exactly these keys:
+{
+  "searchTerms": ["3-6 job title search queries matching this person's seniority and primary stack, e.g. 'Senior Angular Developer'"],
+  "strongKeywords": ["5-12 primary technical skills from the CV, lowercase"],
+  "additionalKeywords": ["5-10 secondary or seniority keywords like 'senior', 'lead', 'rxjs', lowercase"],
+  "excludeTitle": ["job title patterns clearly unrelated to this profile, lowercase, e.g. 'junior', 'backend engineer', 'data scientist'"],
+  "excludeKeywords": ["technology stack keywords to exclude from job descriptions, lowercase, e.g. 'java', 'python', 'wordpress'"]
+}`,
+      }],
+    });
+
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) throw new Error('Empty AI response');
+
+    const extracted = JSON.parse(jsonrepair(raw)) as {
+      searchTerms: string[];
+      strongKeywords: string[];
+      additionalKeywords: string[];
+      excludeTitle: string[];
+      excludeKeywords: string[];
+    };
+
+    const updated = await this.update(activeProfile.id, {
+      searchTerms: extracted.searchTerms ?? [],
+      strongKeywords: extracted.strongKeywords ?? [],
+      additionalKeywords: extracted.additionalKeywords ?? [],
+      excludeTitle: extracted.excludeTitle ?? [],
+      excludeKeywords: extracted.excludeKeywords ?? [],
+    }, userId);
+
+    return { profile: updated, wasUpdated: true };
   }
 
   async seedForUser(userId: number): Promise<ScraperProfile> {

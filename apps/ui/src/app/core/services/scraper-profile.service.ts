@@ -36,4 +36,11 @@ export class ScraperProfileService {
   delete(id: number): Observable<{ ok: boolean }> {
     return this.http.delete<{ ok: boolean }>(`${this.base}/${id}`);
   }
+
+  extractFromCv(cvText: string): Observable<{ ok: boolean; profile: ScraperProfile; wasUpdated: boolean }> {
+    return this.http.post<{ ok: boolean; profile: ScraperProfile; wasUpdated: boolean }>(
+      `${this.base}/extract-from-cv`,
+      { cvText },
+    );
+  }
 }

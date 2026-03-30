@@ -1,5 +1,6 @@
 import { computed, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { ToastService } from '@core/services/toast.service';
 import {
   signalStore,
   withState,
@@ -9,7 +10,7 @@ import {
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { tapResponse } from '@ngrx/operators';
-import { pipe, switchMap, tap, debounceTime, distinctUntilChanged, interval, Subscription, forkJoin, Observable } from 'rxjs';
+import { pipe, switchMap, tap, debounceTime, distinctUntilChanged, interval, Subscription, Observable } from 'rxjs';
 import { takeWhile } from 'rxjs/operators';
 import { Job, JobStats, JobStatus } from '@core/models/job.model';
 import { ScraperStatus, JobFilters, JobsState } from '@core/models/jobs.store.model';
@@ -41,9 +42,11 @@ export const JobsStore = signalStore(
     offers: computed(() => stats()?.offers ?? 0),
     thisWeek: computed(() => stats()?.thisWeek ?? 0),
     scraperRunning: computed(() => scraperStatus()?.running ?? false),
+    scraperCurrentPlatform: computed(() => scraperStatus()?.currentPlatform ?? null),
+    scraperPlatformResults: computed(() => scraperStatus()?.platformResults ?? []),
   })),
 
-  withMethods((store, http = inject(HttpClient)) => {
+  withMethods((store, http = inject(HttpClient), toast = inject(ToastService)) => {
     const base = environment.apiUrl;
     let pollSub: Subscription | null = null;
 
@@ -78,9 +81,26 @@ export const JobsStore = signalStore(
       pollSub?.unsubscribe();
       pollSub = interval(2000).pipe(
         switchMap(() => http.get<ScraperStatus & { ok: boolean }>(`${base}/scraper/status`)),
-        tap((s) => patchState(store, { scraperStatus: s })),
+        tap((s) => {
+          const prevCount = store.scraperPlatformResults().length;
+          patchState(store, { scraperStatus: s });
+          // Reload jobs list each time a new platform finishes
+          if ((s.platformResults?.length ?? 0) > prevCount) {
+            reloadData();
+          }
+        }),
         takeWhile((s) => s.running, true),
-      ).subscribe({ complete: () => { patchState(store, { scraperStopping: false }); reloadData(); } });
+      ).subscribe({
+        complete: () => {
+          patchState(store, { scraperStopping: false });
+          reloadData();
+          const last = store.scraperStatus()?.lastRun;
+          if (last) {
+            const msg = `Scraping done — ${last.inserted} new, ${last.updated} updated`;
+            toast.success(msg, 5000);
+          }
+        },
+      });
     }
 
     return {
@@ -227,12 +247,12 @@ export const JobsStore = signalStore(
       },
 
       bulkDelete(ids: number[]): void {
-        forkJoin(ids.map((id) => http.delete(`${base}/jobs/${id}`))).pipe(
+        http.delete<{ ok: boolean; deleted: number }>(`${base}/jobs/bulk`, { body: { ids } }).pipe(
           tapResponse({
-            next: () => {
+            next: ({ deleted }) => {
               patchState(store, {
                 jobs: store.jobs().filter((j) => !ids.includes(j.id)),
-                total: store.total() - ids.length,
+                total: store.total() - deleted,
                 selectedIds: [],
               });
               reloadData();
@@ -243,10 +263,10 @@ export const JobsStore = signalStore(
       },
 
       bulkUpdateStatus(ids: number[], status: JobStatus): void {
-        forkJoin(ids.map((id) => http.patch<{ ok: boolean; job: Job }>(`${base}/jobs/${id}`, { status }))).pipe(
+        http.patch<{ ok: boolean; updated: number; jobs: Job[] }>(`${base}/jobs/bulk/status`, { ids, status }).pipe(
           tapResponse({
-            next: (results) => {
-              const updatedMap = new Map(results.map((r) => [r.job.id, r.job]));
+            next: ({ jobs: updatedJobs }) => {
+              const updatedMap = new Map(updatedJobs.map((j) => [j.id, j]));
               const activeStatus = store.filters().status;
               let jobs = store.jobs().map((j) => updatedMap.get(j.id) ?? j);
               if (activeStatus) {

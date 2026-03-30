@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, DestroyRef, isDevMode } from '@angular/core';
+import { Component, OnInit, inject, signal, DestroyRef, isDevMode, output } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,8 +10,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { UserCvService } from '@core/services/user-cv.service';
+import { ScraperProfileService } from '@core/services/scraper-profile.service';
 import { ToastService } from '@core/services/toast.service';
 import { UserCv } from '@core/models/user-cv.model';
+import { ScraperProfile } from '@core/models/scraper-profile.model';
 import { CvPreviewDialogComponent } from '@shared/cv-preview-dialog/cv-preview-dialog.component';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -100,9 +102,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = isDevMode()
 })
 export class CvManagerComponent implements OnInit {
   private readonly userCvSvc = inject(UserCvService);
+  private readonly profileSvc = inject(ScraperProfileService);
   private readonly toast = inject(ToastService);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+
+  readonly profileAutoFilled = output<ScraperProfile>();
 
   readonly cvs = signal<UserCv[]>([]);
   readonly uploading = signal(false);
@@ -148,6 +153,7 @@ export class CvManagerComponent implements OnInit {
           this.cvs.update(list => [cv, ...list]);
           this.newCvName = '';
           this.toast.success('CV uploaded');
+          this.tryFillProfileFromCv(cvText);
         },
         complete: () => this.uploading.set(false),
       });
@@ -157,6 +163,17 @@ export class CvManagerComponent implements OnInit {
       this.uploading.set(false);
     }
     input.value = '';
+  }
+
+  private tryFillProfileFromCv(cvText: string): void {
+    this.profileSvc.extractFromCv(cvText).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ wasUpdated, profile }) => {
+        if (wasUpdated) {
+          this.toast.success('Scraper profile auto-filled from your CV');
+          this.profileAutoFilled.emit(profile);
+        }
+      },
+    });
   }
 
   private async extractTextFromPdf(arrayBuffer: ArrayBuffer): Promise<string> {

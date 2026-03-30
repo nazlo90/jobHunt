@@ -47,13 +47,13 @@ const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
 
       <!-- Filters -->
       <div class="flex gap-3 flex-wrap mb-4 [&>mat-form-field]:flex-shrink-0">
-        <mat-form-field appearance="outline" class="flex-1 min-w-[200px]">
+        <mat-form-field appearance="outline" class="flex-1 basis-full [@media(min-width:960px)]:basis-auto min-w-[200px]">
           <mat-label>Search</mat-label>
           <input matInput [formControl]="searchCtrl" placeholder="Company, role, tech…">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="basis-[calc(50%-6px)] [@media(min-width:960px)]:basis-auto">
           <mat-label>Status</mat-label>
           <mat-select [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()">
             <mat-option value="">All</mat-option>
@@ -63,7 +63,7 @@ const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="basis-[calc(50%-6px)] [@media(min-width:960px)]:basis-auto">
           <mat-label>Source</mat-label>
           <mat-select [(ngModel)]="selectedSource" (ngModelChange)="onFilterChange()">
             <mat-option value="">All</mat-option>
@@ -73,7 +73,7 @@ const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="basis-[calc(50%-6px)] [@media(min-width:960px)]:basis-auto">
           <mat-label>Min Stars</mat-label>
           <mat-select [(ngModel)]="selectedMinPriority" (ngModelChange)="onFilterChange()">
             <mat-option [value]="0">Any</mat-option>
@@ -83,7 +83,7 @@ const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="basis-[calc(50%-6px)] [@media(min-width:960px)]:basis-auto">
           <mat-label>Sort by</mat-label>
           <mat-select [(ngModel)]="selectedSort" (ngModelChange)="onFilterChange()">
             <mat-option value="created_at">Date Added</mat-option>

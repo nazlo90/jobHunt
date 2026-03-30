@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post,
+  Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, HttpCode,
 } from '@nestjs/common';
 import { ScraperProfileService } from './scraper-profile.service';
 import { CreateScraperProfileDto } from './create-scraper-profile.dto';
@@ -24,6 +24,13 @@ export class ScraperProfileController {
   @Get(':id')
   async getById(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: User) {
     return { ok: true, profile: await this.service.getById(id, user.id) };
+  }
+
+  @Post('extract-from-cv')
+  @HttpCode(200)
+  async extractFromCv(@Body() body: { cvText: string }, @CurrentUser() user: User) {
+    const result = await this.service.extractFromCv(body.cvText, user.id);
+    return { ok: true, ...result };
   }
 
   @Post()

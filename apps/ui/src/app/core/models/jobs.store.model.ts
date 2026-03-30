@@ -2,6 +2,8 @@ import { Job, JobStats } from './job.model';
 
 export interface ScraperStatus {
   running: boolean;
+  currentPlatform?: string | null;
+  platformResults?: { name: string; count: number }[];
   lastRun: {
     startedAt: string;
     finishedAt?: string;

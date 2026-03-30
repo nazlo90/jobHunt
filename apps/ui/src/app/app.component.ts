@@ -37,11 +37,6 @@ import { AuthStore } from '@core/store/auth.store';
               <mat-icon class="!text-white">work_outline</mat-icon>
             </div>
             <span class="text-[17px] font-bold text-slate-900 tracking-tight flex-1">JobHunt</span>
-            @if (store.scraperRunning()) {
-              <span class="flex items-center" matTooltip="Scraper is running…">
-                <mat-spinner diameter="16" />
-              </span>
-            }
           </div>
 
           <div class="h-px bg-slate-100 mx-3 mb-2"></div>
@@ -65,14 +60,26 @@ import { AuthStore } from '@core/store/auth.store';
             </a>
           </mat-nav-list>
 
+          <!-- Scraper progress -->
+          @if (store.scraperRunning()) {
+            <div class="mx-3 mb-3 rounded-xl bg-violet-50 border border-violet-200 px-3 py-2.5">
+              <div class="flex items-center gap-2 mb-1">
+                <mat-spinner diameter="14" class="scraper-spinner" />
+                <span class="text-xs font-semibold text-violet-700">Scraping jobs…</span>
+              </div>
+              @if (store.scraperCurrentPlatform(); as platform) {
+                <p class="text-[11px] text-violet-500 ml-4 truncate">{{ platform }}</p>
+              }
+              @if (store.scraperPlatformResults().length > 0) {
+                <p class="text-[11px] text-violet-400 ml-4 mt-0.5">
+                  {{ store.scraperPlatformResults().length }} platform{{ store.scraperPlatformResults().length !== 1 ? 's' : '' }} done
+                </p>
+              }
+            </div>
+          }
+
           <!-- User footer -->
           <div class="border-t border-slate-100 mt-auto">
-            @if (store.scraperRunning()) {
-              <div class="flex items-center gap-2 px-4 py-2 text-xs text-slate-400">
-                <mat-spinner diameter="14" />
-                <span>Scraping in progress…</span>
-              </div>
-            }
             <button
               mat-button
               class="w-full !justify-start !px-4 !py-2 !h-auto"
@@ -141,6 +148,7 @@ import { AuthStore } from '@core/store/auth.store';
   styles: [`
     mat-sidenav-container { height: 100vh; }
     .mobile-toolbar { position: sticky; top: 0; z-index: 100; }
+    .scraper-spinner circle { stroke: #7c3aed; }
   `],
 })
 export class AppComponent implements OnInit, OnDestroy {

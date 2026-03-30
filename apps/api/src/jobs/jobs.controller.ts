@@ -6,6 +6,7 @@ import { JobsService } from './jobs.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { QueryJobsDto } from './dto/query-jobs.dto';
+import { BulkDeleteDto, BulkUpdateStatusDto } from './dto/bulk-jobs.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../database/entities/user.entity';
 
@@ -30,6 +31,19 @@ export class JobsController {
   async autocomplete(@Body() body: { url: string }) {
     const data = await this.jobsService.autocomplete(body.url);
     return { ok: true, ...data };
+  }
+
+  @Delete('bulk')
+  @HttpCode(HttpStatus.OK)
+  async bulkDelete(@Body() dto: BulkDeleteDto, @CurrentUser() user: User) {
+    const result = await this.jobsService.bulkDelete(dto.ids, user.id);
+    return { ok: true, ...result };
+  }
+
+  @Patch('bulk/status')
+  async bulkUpdateStatus(@Body() dto: BulkUpdateStatusDto, @CurrentUser() user: User) {
+    const result = await this.jobsService.bulkUpdateStatus(dto.ids, dto.status, user.id);
+    return { ok: true, ...result };
   }
 
   @Get(':id')
