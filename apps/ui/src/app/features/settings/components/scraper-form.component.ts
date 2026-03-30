@@ -61,11 +61,11 @@ import { ArrayField, ALL_SOURCES } from '@core/constants/scraper.const';
         <mat-card-header><mat-card-title>Filters</mat-card-title></mat-card-header>
         <mat-card-content class="!pt-3">
           <div class="flex gap-4 flex-wrap mb-3">
-            <mat-form-field appearance="outline" class="w-44">
+            <mat-form-field appearance="outline" class="flex-1 min-w-[160px]">
               <mat-label>Min Salary</mat-label>
               <input matInput type="number" formControlName="minSalary" min="0">
             </mat-form-field>
-            <mat-form-field appearance="outline" class="w-44">
+            <mat-form-field appearance="outline" class="flex-1 min-w-[160px]">
               <mat-label>Min Score</mat-label>
               <mat-select formControlName="minScore">
                 @for (p of [1,2,3,4,5]; track p) {

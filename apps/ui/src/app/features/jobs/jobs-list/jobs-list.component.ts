@@ -22,7 +22,7 @@ import { JOB_STATUSES, JobStatus } from '@core/models/job.model';
 
 const ALL_COLUMNS = ['select', 'priority', 'company', 'role', 'status', 'salary', 'source', 'createdAt', 'actions'] as const;
 const TABLET_COLUMNS = ['select', 'priority', 'company', 'role', 'status', 'actions'] as const;
-const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
+const MOBILE_COLUMNS = ['select', 'company', 'role', 'status', 'actions'] as const;
 
 @Component({
   selector: 'app-jobs-list',
@@ -100,7 +100,8 @@ const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
       }
 
       <!-- Table -->
-      <table mat-table [dataSource]="store.jobs()" class="w-full bg-white rounded-lg overflow-hidden shadow-sm">
+      <div class="overflow-x-auto rounded-lg shadow-sm">
+      <table mat-table [dataSource]="store.jobs()" class="w-full min-w-[480px] bg-white rounded-lg overflow-hidden">
 
         <ng-container matColumnDef="select">
           <th mat-header-cell *matHeaderCellDef (click)="$event.stopPropagation()">
@@ -180,6 +181,7 @@ const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
         <tr mat-row *matRowDef="let row; columns: displayedColumns();"
             class="job-row" [routerLink]="['/jobs', row.id]"></tr>
       </table>
+      </div>
 
       <mat-paginator
         [length]="store.totalJobs()"
@@ -196,12 +198,13 @@ const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
     @if (store.selectedIds().length > 0) {
       <div class="bulk-bar">
         <span class="text-sm font-bold text-violet-600 whitespace-nowrap px-1">
-          {{ store.selectedIds().length }} selected
+          {{ store.selectedIds().length }}
+          <span class="hidden sm:inline">selected</span>
         </span>
-        <mat-divider vertical class="!h-7 !mx-1.5"></mat-divider>
+        <mat-divider vertical class="!h-7 !mx-1"></mat-divider>
 
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-40">
-          <mat-label>Set status</mat-label>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="bulk-status-field">
+          <mat-label>Status</mat-label>
           <mat-select [(ngModel)]="bulkStatusValue" (ngModelChange)="bulkChangeStatus($event)">
             @for (s of statuses; track s) {
               <mat-option [value]="s">{{ s }}</mat-option>
@@ -209,12 +212,12 @@ const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
           </mat-select>
         </mat-form-field>
 
-        <button mat-stroked-button color="primary" (click)="exportCsv()" matTooltip="Export selected to CSV">
-          <mat-icon>download</mat-icon> CSV
+        <button mat-icon-button color="primary" (click)="exportCsv()" matTooltip="Export selected to CSV">
+          <mat-icon>download</mat-icon>
         </button>
 
-        <button mat-flat-button class="!bg-red-600 !text-white hover:!bg-red-700" (click)="bulkDelete()">
-          <mat-icon>delete</mat-icon> Delete
+        <button mat-icon-button class="!text-red-600" (click)="bulkDelete()" matTooltip="Delete selected">
+          <mat-icon>delete</mat-icon>
         </button>
 
         <button mat-icon-button (click)="store.clearSelection()" matTooltip="Clear selection">
@@ -233,13 +236,20 @@ const MOBILE_COLUMNS = ['company', 'role', 'status', 'actions'] as const;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 18px;
+      gap: 6px;
+      padding: 8px 12px;
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 4px 24px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.08);
       z-index: 1000;
       animation: slideUp 0.18s ease;
+      max-width: calc(100vw - 32px);
+      box-sizing: border-box;
+    }
+    .bulk-status-field { width: 120px; }
+    @media (min-width: 600px) {
+      .bulk-bar { gap: 8px; padding: 10px 18px; }
+      .bulk-status-field { width: 160px; }
     }
     @keyframes slideUp {
       from { opacity: 0; transform: translateX(-50%) translateY(10px); }

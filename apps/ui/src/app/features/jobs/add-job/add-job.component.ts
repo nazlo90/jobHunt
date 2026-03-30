@@ -130,7 +130,7 @@ import { JOB_STATUSES, JobStatus } from '@core/models/job.model';
 
         </mat-card-content>
 
-        <mat-card-actions class="!px-4 !pb-4 flex gap-2">
+        <mat-card-actions class="!px-4 !pb-4 flex gap-2 justify-end">
           <button mat-flat-button color="primary" (click)="save()"
                   [disabled]="!form.company || !form.role || saving()">
             <span class="flex items-center gap-1.5">

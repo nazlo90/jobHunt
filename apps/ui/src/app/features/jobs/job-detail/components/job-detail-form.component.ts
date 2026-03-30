@@ -98,16 +98,16 @@ import { FormFields } from './job-detail-form.model';
       </mat-form-field>
 
       <!-- Save button -->
-      <div class="flex items-center gap-3 pt-2">
+      <div class="flex items-center justify-end gap-3 pt-2">
+        @if (isDirty()) {
+          <span class="text-xs text-amber-600 font-medium">Unsaved changes</span>
+        }
         <button mat-flat-button color="primary" (click)="saveChanges()"
                 [disabled]="!isDirty()">
           <span class="flex items-center gap-1.5">
             <mat-icon>save</mat-icon> Save Details
           </span>
         </button>
-        @if (isDirty()) {
-          <span class="text-xs text-amber-600 font-medium">Unsaved changes</span>
-        }
       </div>
 
     </div>

@@ -31,12 +31,6 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
 
       @if (activating()) {
         <mat-spinner diameter="20" />
-      } @else {
-        <span class="inline-flex items-center gap-1 text-[13px] font-semibold text-emerald-700
-                      bg-emerald-50 rounded-full px-3 py-1">
-          <mat-icon class="!text-base">check_circle</mat-icon>
-          Active
-        </span>
       }
 
       <span class="flex-1"></span>

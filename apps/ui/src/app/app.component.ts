@@ -28,6 +28,7 @@ import { AuthStore } from '@core/store/auth.store';
           #sidenav
           [mode]="isMobile() ? 'over' : 'side'"
           [opened]="!isMobile()"
+          [autoFocus]="false"
           class="w-[230px] border-r border-slate-200 bg-white flex flex-col"
         >
 
@@ -128,7 +129,7 @@ import { AuthStore } from '@core/store/auth.store';
             </mat-toolbar>
           }
 
-          <div class="p-4 md:p-6 lg:p-8 min-h-full">
+          <div class="p-4 pb-24 md:pb-8 md:p-6 lg:p-8 min-h-full">
             <router-outlet />
           </div>
         </mat-sidenav-content>
