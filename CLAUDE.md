@@ -75,6 +75,23 @@ GET    /api/scraper/status    last run info
 - Use standalone Angular components (Angular 17+ style)
 - Use signals over RxJS where practical in Angular
 
+## Rules (ALWAYS follow)
+1. **Minimal change** — touch only what's needed. Don't refactor surrounding code.
+2. **Root cause only** — fix the actual problem, not symptoms. No band-aids.
+3. **No speculative code** — don't add error handling, abstractions, or features not asked for.
+4. **Plan before code** — for any non-trivial change, list files + steps before writing code.
+5. **Never delete `db/jobhunt.db`** — it contains real data.
+6. **NestJS**: business logic in service, never in controller. DTOs always validated.
+7. **Angular**: standalone components, signals > RxJS, no memory leaks (unsubscribe/takeUntilDestroyed).
+8. **TypeScript**: no `any`, no unused imports, proper return types on public methods.
+
+## Anti-patterns (NEVER do these)
+- Don't add comments explaining obvious code
+- Don't add try/catch around code that can't fail
+- Don't create helper functions used only once
+- Don't add backwards-compatibility shims for removed code
+- Don't mock SQLite in tests — use real DB file
+
 ## Common Tasks
 - "Run scraper" → `cd apps/api && npm run scrape`
 - "Start API" → `cd apps/api && npm run start:dev`
