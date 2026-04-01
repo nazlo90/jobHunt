@@ -1,4 +1,4 @@
-import { Component, OnInit, DoCheck, signal, inject, DestroyRef, computed } from '@angular/core';
+import { Component, OnInit, signal, inject, DestroyRef, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -27,7 +27,7 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
         <h1 class="m-0 text-2xl font-bold text-slate-900">Dashboard</h1>
       </div>
 
-      <!-- ── Onboarding banner (shows until all 3 steps done) ── -->
+      <!-- ── Onboarding banner (shows until steps 1 & 2 done) ── -->
       @if (!onboardingDone()) {
         <div class="mb-6 rounded-xl border border-violet-200 bg-violet-50 p-5">
           <div class="flex items-start gap-3 mb-4">
@@ -96,40 +96,6 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
               }
             </div>
 
-            <!-- Step 3: Run first scrape -->
-            <div class="flex items-center gap-3 rounded-lg p-3 transition-colors"
-                 [class.bg-emerald-50]="step3Done()" [class.bg-white]="!step3Done()">
-              <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                   [class.bg-emerald-500]="step3Done()" [class.bg-slate-200]="!step3Done()">
-                @if (step3Done()) {
-                  <mat-icon class="!text-white !text-[16px] !w-4 !h-4">check</mat-icon>
-                } @else {
-                  <span class="text-[12px] font-bold text-slate-500">3</span>
-                }
-              </div>
-              <div class="flex-1">
-                <p class="text-sm font-medium m-0" [class.text-emerald-700]="step3Done()" [class.text-slate-700]="!step3Done()">
-                  Run your first scrape
-                </p>
-                @if (!step3Done()) {
-                  <p class="text-xs text-slate-400 m-0">Fetch jobs from all configured platforms</p>
-                }
-              </div>
-              @if (!step3Done()) {
-                <button mat-flat-button color="primary"
-                        [disabled]="!step1Done() || !step2Done() || store.scraperRunning()"
-                        (click)="store.runScraper(selectedProfileId)"
-                        class="!text-sm !py-1"
-                        [matTooltip]="!step1Done() || !step2Done() ? 'Complete steps 1 and 2 first' : ''">
-                  @if (store.scraperRunning()) {
-                    <span class="flex items-center gap-1.5"><mat-spinner diameter="16" />Running…</span>
-                  } @else {
-                    <span class="flex items-center gap-1.5"><mat-icon>refresh</mat-icon>Run Scraper</span>
-                  }
-                </button>
-              }
-            </div>
-
           </div>
         </div>
       }
@@ -153,14 +119,19 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
                 or add a job manually.
               </p>
               <div class="flex justify-center gap-3 flex-wrap">
-                <button mat-flat-button color="primary"
-                        [disabled]="store.scraperRunning()"
-                        (click)="store.runScraper(selectedProfileId)">
-                  <span class="flex items-center gap-1.5">
-                    @if (store.scraperRunning()) { <mat-spinner diameter="18" />Running… }
-                    @else { <mat-icon>refresh</mat-icon>Run Scraper }
-                  </span>
-                </button>
+                @if (store.scraperStopping()) {
+                  <button mat-flat-button disabled>
+                    <span class="flex items-center gap-1.5"><mat-spinner diameter="18" />Stopping…</span>
+                  </button>
+                } @else if (store.scraperRunning()) {
+                  <button mat-flat-button color="warn" (click)="store.stopScraper()">
+                    <span class="flex items-center gap-1.5"><mat-icon>stop</mat-icon>Stop</span>
+                  </button>
+                } @else {
+                  <button mat-flat-button color="primary" (click)="store.runScraper(selectedProfileId)">
+                    <span class="flex items-center gap-1.5"><mat-icon>refresh</mat-icon>Run Scraper</span>
+                  </button>
+                }
                 <a mat-stroked-button routerLink="/jobs/new">
                   <mat-icon>add</mat-icon> Add Job Manually
                 </a>
@@ -291,7 +262,7 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
     </div>
   `,
 })
-export class DashboardComponent implements OnInit, DoCheck {
+export class DashboardComponent implements OnInit {
   readonly store = inject(JobsStore);
   private readonly profileSvc = inject(ScraperProfileService);
   private readonly userCvSvc = inject(UserCvService);
@@ -303,12 +274,10 @@ export class DashboardComponent implements OnInit, DoCheck {
   // Onboarding state
   readonly hasCvs = signal(false);
   readonly hasSearchTerms = signal(false);
-  readonly hasRunScraper = signal(false);
 
   readonly step1Done = computed(() => this.hasCvs());
   readonly step2Done = computed(() => this.hasSearchTerms());
-  readonly step3Done = computed(() => this.hasRunScraper());
-  readonly onboardingDone = computed(() => this.step1Done() && this.step2Done() && this.step3Done());
+  readonly onboardingDone = computed(() => this.step1Done() && this.step2Done());
 
   ngOnInit() {
     this.store.loadStats(undefined);
@@ -328,18 +297,5 @@ export class DashboardComponent implements OnInit, DoCheck {
       next: ({ cvs }) => this.hasCvs.set(cvs.length > 0),
     });
 
-    // If scraper has run before, step 3 is done
-    const scraperStatus = this.store.scraperStatus();
-    if (scraperStatus?.lastRun) {
-      this.hasRunScraper.set(true);
-    }
-  }
-
-  ngDoCheck() {
-    // Reactively check if scraper has run
-    const s = this.store.scraperStatus();
-    if (s?.lastRun && !this.hasRunScraper()) {
-      this.hasRunScraper.set(true);
-    }
   }
 }

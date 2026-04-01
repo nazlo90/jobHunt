@@ -114,11 +114,15 @@ export class ScraperService {
       const enabled: string[] = profile.enabledSources ?? [];
       const isEnabled = (name: string) => enabled.length === 0 || enabled.includes(name);
 
+      const PLATFORM_TIMEOUT_MS = 30_000;
       const runPlatform = async (label: string, fn: () => Promise<ScrapedJob[]>) => {
         if (this.stopRequested) { this.logger.log('Scraper stopped by user'); return; }
         this.currentPlatform = label;
         try {
-          const jobs = await fn();
+          const timeout = new Promise<ScrapedJob[]>((_, reject) =>
+            setTimeout(() => reject(new Error(`timed out after ${PLATFORM_TIMEOUT_MS / 1000}s`)), PLATFORM_TIMEOUT_MS),
+          );
+          const jobs = await Promise.race([fn(), timeout]);
           this.logger.log(`${label}: ${jobs.length} jobs`);
           run.total += jobs.length;
           await this.insertOrUpdateBatch(jobs, run, userId);
@@ -142,6 +146,15 @@ export class ScraperService {
         { name: 'Jobicy',         fn: () => scrapers.scrapeJobicy() },
         { name: 'TheMuse',        fn: () => scrapers.scrapeTheMuse() },
         { name: 'DOU',            fn: () => scrapers.scrapeDOU() },
+        { name: 'JustJoin',       fn: () => scrapers.scrapeJustJoin() },
+        { name: 'NoFluffJobs',    fn: () => scrapers.scrapeNoFluffJobs() },
+        { name: 'HappyMonday',    fn: () => scrapers.scrapeHappyMonday() },
+        { name: 'JobGether',      fn: () => scrapers.scrapeJobGether() },
+        { name: 'TotalJobs',      fn: () => scrapers.scrapeTotalJobs() },
+        { name: 'Jooble',         fn: () => scrapers.scrapeJooble() },
+        { name: 'Indeed',         fn: () => scrapers.scrapeIndeed() },
+        { name: 'Glassdoor',      fn: () => scrapers.scrapeGlassdoor() },
+        { name: 'Kariyer',        fn: () => scrapers.scrapeKariyer() },
       ];
 
       for (const runner of runners) {

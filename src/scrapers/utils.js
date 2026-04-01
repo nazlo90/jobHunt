@@ -25,6 +25,7 @@ let CONFIG = {
   theMuseLevels: [],              // The Muse experience levels e.g. ['Senior Level']
   wellfoundRoles: [],             // Wellfound role filters e.g. ['Frontend Engineer']
   djinniFallbackCategories: [],   // Djinni fallback if strongKeywords don't map to any category
+  noFluffJobsCategories: [],      // NoFluffJobs category slugs e.g. ['frontend', 'fullstack']
 };
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
@@ -135,6 +136,7 @@ export function setConfig(profile) {
   CONFIG.theMuseLevels            = Array.isArray(sc.theMuseLevels)            ? sc.theMuseLevels            : [];
   CONFIG.wellfoundRoles           = Array.isArray(sc.wellfoundRoles)           ? sc.wellfoundRoles           : [];
   CONFIG.djinniFallbackCategories = Array.isArray(sc.djinniFallbackCategories) ? sc.djinniFallbackCategories : [];
+  CONFIG.noFluffJobsCategories    = Array.isArray(sc.noFluffJobsCategories)    ? sc.noFluffJobsCategories    : [];
 }
 
 export { CONFIG };
