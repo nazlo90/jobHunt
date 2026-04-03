@@ -16,7 +16,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ScraperProfileService } from '@core/services/scraper-profile.service';
 import { ToastService } from '@core/services/toast.service';
 import { ScraperProfile } from '@core/models/scraper-profile.model';
-import { ArrayField, ALL_SOURCES } from '@core/constants/scraper.const';
+import { ArrayField, ALL_SOURCES, SOURCE_CATEGORIES } from '@core/constants/scraper.const';
 
 @Component({
   selector: 'app-scraper-form',
@@ -174,15 +174,19 @@ import { ArrayField, ALL_SOURCES } from '@core/constants/scraper.const';
         <mat-card-header><mat-card-title>Scraper Platforms</mat-card-title></mat-card-header>
         <mat-card-content>
           <p class="text-xs text-slate-400 mb-3">Toggle which platforms are scraped during each run.</p>
-          <div class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-            @for (source of allSources; track source) {
-              <mat-slide-toggle color="primary"
-                [checked]="enabledSources().includes(source)"
-                (change)="toggleSource(source, $event.checked)">
-                {{ source }}
-              </mat-slide-toggle>
-            }
-          </div>
+          @for (category of sourceCategories; track category.label) {
+            <p class="text-sm font-medium text-slate-500 mb-2 mt-1">{{ category.label }}</p>
+            <div class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 mb-4">
+              @for (source of category.sources; track source) {
+                <mat-slide-toggle color="primary"
+                  [checked]="enabledSources().includes(source)"
+                  (change)="toggleSource(source, $event.checked)">
+                  {{ source }}
+                </mat-slide-toggle>
+              }
+            </div>
+            @if (!$last) { <mat-divider class="!mb-4" /> }
+          }
         </mat-card-content>
       </mat-card>
 
@@ -214,7 +218,7 @@ export class ScraperFormComponent {
   readonly profileUpdated = output<ScraperProfile>();
 
   readonly separatorKeys = [ENTER, COMMA] as const;
-  readonly allSources = ALL_SOURCES;
+  readonly sourceCategories = SOURCE_CATEGORIES;
   readonly saving = signal(false);
   readonly enabledSources = signal<string[]>([...ALL_SOURCES]);
 
