@@ -39,8 +39,16 @@ async function bootstrap() {
     }),
   );
 
+  const corsOrigins = (
+    process.env.CORS_ORIGINS ??
+    process.env.FRONTEND_URL ??
+    'http://localhost:4200'
+  )
+    .split(',')
+    .map((s) => s.trim());
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:4200',
+    origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
