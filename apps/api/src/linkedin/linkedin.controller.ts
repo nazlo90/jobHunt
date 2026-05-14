@@ -10,12 +10,16 @@ export class LinkedInController {
   async generateComment(
     @Body() body: { postText: string; authorName?: string; authorTitle?: string },
   ) {
-    const comments = await this.linkedInService.generateComments({
-      postText: body.postText,
-      authorName: body.authorName ?? '',
-      authorTitle: body.authorTitle ?? '',
-    });
-    return { ok: true, comments };
+    try {
+      const comments = await this.linkedInService.generateComments({
+        postText: body.postText,
+        authorName: body.authorName ?? '',
+        authorTitle: body.authorTitle ?? '',
+      });
+      return { ok: true, comments };
+    } catch (e: any) {
+      return { ok: false, error: e?.message, stack: e?.stack?.split('\n').slice(0, 5) };
+    }
   }
 
   @Post('write')
