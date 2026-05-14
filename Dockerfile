@@ -42,10 +42,14 @@ COPY --from=api-build /build/apps/api/public ./public
 COPY --from=api-build /build/apps/api/node_modules ./node_modules
 # Raw JS scrapers (not compiled by tsc, live outside apps/api)
 COPY src/scrapers ./scrapers
+# Raw JS AI generators + shared config
+COPY src/ai ./ai
+COPY src/config ./config
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV SCRAPERS_PATH=/app/scrapers
+ENV LINKEDIN_SRC_PATH=/app
 # DB_PATH must be set at runtime to a mounted volume path, e.g. /data/db/jobhunt.db
 
 EXPOSE 3000
