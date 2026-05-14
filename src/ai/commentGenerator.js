@@ -16,6 +16,7 @@ Rules for all comments:
 export async function generateComments(post) {
   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   const userPrompt = `Generate 5 short comment variants for this LinkedIn post. Return ONLY valid JSON.
+Detect the language of the post and write all comments in that same language.
 
 Post by ${post.authorName} (${post.authorTitle}):
 "${post.postText}"
