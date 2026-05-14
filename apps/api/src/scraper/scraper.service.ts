@@ -5,6 +5,8 @@ import { Repository } from 'typeorm';
 import { Job } from '../database/entities/job.entity';
 import { ScraperProfileService } from '../scraper-profile/scraper-profile.service';
 
+const esmImport = new Function('path', 'return import(path)') as (path: string) => Promise<any>;
+
 export interface ScrapedJob {
   scrapeId: string;
   company: string;
@@ -89,8 +91,8 @@ export class ScraperService {
       // Prod: __dirname = /app/dist/scraper/   → ../../scrapers/
       const scrapersBase = process.env.SCRAPERS_PATH
         ?? path.resolve(__dirname, '../../../../src/scrapers');
-      const scrapers = await import(`${scrapersBase}/index.js` as any);
-      const utils    = await import(`${scrapersBase}/utils.js` as any);
+      const scrapers = await esmImport(`${scrapersBase}/index.js`);
+      const utils    = await esmImport(`${scrapersBase}/utils.js`);
       const profile  = profileId
         ? await this.configService.getById(profileId, userId)
         : await this.configService.getActive(userId);

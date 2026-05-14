@@ -14,6 +14,9 @@ export interface PostVariant {
   text: string;
 }
 
+// Bypass TypeScript's import→require compilation so ESM src files load correctly in production
+const esmImport = new Function('path', 'return import(path)') as (path: string) => Promise<any>;
+
 @Injectable()
 export class LinkedInService {
   private readonly logger = new Logger(LinkedInService.name);
@@ -23,12 +26,12 @@ export class LinkedInService {
   }
 
   async generateComments(post: { postText: string; authorName: string; authorTitle: string }): Promise<CommentVariants> {
-    const { generateComments } = await import(`${this.srcBase}/ai/commentGenerator.js` as any);
+    const { generateComments } = await esmImport(`${this.srcBase}/ai/commentGenerator.js`);
     return generateComments(post) as Promise<CommentVariants>;
   }
 
   async generatePosts(category: string, seedIdea: string): Promise<PostVariant[]> {
-    const { generatePosts } = await import(`${this.srcBase}/ai/postGenerator.js` as any);
+    const { generatePosts } = await esmImport(`${this.srcBase}/ai/postGenerator.js`);
     return generatePosts(category, seedIdea) as Promise<PostVariant[]>;
   }
 
@@ -38,7 +41,7 @@ export class LinkedInService {
     roleTitle: string;
     companyNote: string;
   }): Promise<{ text: string }> {
-    const { generateDM } = await import(`${this.srcBase}/ai/dmGenerator.js` as any);
+    const { generateDM } = await esmImport(`${this.srcBase}/ai/dmGenerator.js`);
     return generateDM(input) as Promise<{ text: string }>;
   }
 }
