@@ -10,6 +10,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { CvsModule } from './cvs/cvs.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { McpModule } from './mcp/mcp.module';
+import { LinkedInModule } from './linkedin/linkedin.module';
 import { ScraperConfigModule } from './scraper-config/scraper-config.module';
 import { ScraperProfileModule } from './scraper-profile/scraper-profile.module';
 import { UserCvsModule } from './user-cvs/user-cvs.module';
@@ -41,6 +42,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     ScraperProfileModule,
     UserCvsModule,
     McpModule,
+    LinkedInModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

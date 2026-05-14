@@ -4,6 +4,8 @@
   "description": "JobHunt monorepo — NestJS API + Angular UI + JS scrapers",
   "type": "module",
   "dependencies": {
-    "node-fetch": "^3.3.2"
+    "groq-sdk": "^1.1.1",
+    "node-fetch": "^3.3.2",
+    "playwright": "^1.60.0"
   }
 }

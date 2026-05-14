@@ -59,6 +59,11 @@ import { AuthStore } from '@core/store/auth.store';
               <mat-icon matListItemIcon>tune</mat-icon>
               <span matListItemTitle>Configurations</span>
             </a>
+            <a mat-list-item routerLink="/linkedin" routerLinkActive="nav-active" class="!rounded-lg !mb-0.5"
+               (click)="isMobile() && sidenav.close()">
+              <mat-icon matListItemIcon>campaign</mat-icon>
+              <span matListItemTitle>LinkedIn</span>
+            </a>
           </mat-nav-list>
 
           <!-- Scraper progress -->

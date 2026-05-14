@@ -1,0 +1,20 @@
+{
+  "name": "jobhunt-mcp",
+  "version": "1.0.0",
+  "description": "JobHunt MCP server — exposes job search, stats, and CV tools to Claude",
+  "type": "module",
+  "scripts": {
+    "start": "node --import tsx/esm server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "better-sqlite3": "^9.6.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

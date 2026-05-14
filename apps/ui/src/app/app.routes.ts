@@ -77,6 +77,11 @@ export const routes: Routes = [
           import('./features/configurations/configurations.component').then((m) => m.ConfigurationsComponent),
       },
       {
+        path: 'linkedin',
+        loadComponent: () =>
+          import('./features/linkedin/linkedin.component').then((m) => m.LinkedInComponent),
+      },
+      {
         path: 'settings',
         redirectTo: 'configurations',
         pathMatch: 'full',
