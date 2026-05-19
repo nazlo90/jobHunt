@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { CvsService } from './cvs.service';
 import { GenerateCvDto } from './dto/generate-cv.dto';
+import { ParseJdDto } from './dto/parse-jd.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../database/entities/user.entity';
 
@@ -28,6 +29,25 @@ export class CvsController {
   async review(@Body() dto: GenerateCvDto, @CurrentUser() user: User) {
     const cv = await this.cvsService.review(dto, user.id);
     return { ok: true, cv };
+  }
+
+  @Post('parse-jd')
+  async parseJd(@Body() dto: ParseJdDto) {
+    const result = await this.cvsService.parseJobDescription(dto.url);
+    return { ok: true, jobDescription: result.jobDescription };
+  }
+
+  @Post('cover-letter')
+  async coverLetter(
+    @Body() dto: GenerateCvDto,
+    @CurrentUser() user: User,
+  ) {
+    const result = await this.cvsService.generateCoverLetter(
+      dto.userCvId,
+      dto.jobDescription,
+      user.id,
+    );
+    return { ok: true, coverLetter: result.coverLetter };
   }
 
   @Post('adapt')

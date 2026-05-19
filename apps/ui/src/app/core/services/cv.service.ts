@@ -24,4 +24,12 @@ export class CvService {
   adapt(adaptedCvId: number): Observable<{ ok: boolean; adaptedCvText: string }> {
     return this.http.post<{ ok: boolean; adaptedCvText: string }>(`${this.base}/cvs/adapt`, { adaptedCvId });
   }
+
+  generateCoverLetter(userCvId: number, jobDescription: string): Observable<{ ok: boolean; coverLetter: string }> {
+    return this.http.post<{ ok: boolean; coverLetter: string }>(`${this.base}/cvs/cover-letter`, { userCvId, jobDescription });
+  }
+
+  parseJobDescription(url: string): Observable<{ ok: boolean; jobDescription: string }> {
+    return this.http.post<{ ok: boolean; jobDescription: string }>(`${this.base}/cvs/parse-jd`, { url });
+  }
 }

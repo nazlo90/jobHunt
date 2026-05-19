@@ -17,6 +17,7 @@ const JobsListPage = lazy(() => import('./features/jobs/pages/JobsListPage'));
 const JobDetailPage = lazy(() => import('./features/jobs/pages/JobDetailPage'));
 const AddJobPage = lazy(() => import('./features/jobs/pages/AddJobPage'));
 const ConfigurationsPage = lazy(() => import('./features/configurations/ConfigurationsPage'));
+const CoverLettersPage = lazy(() => import('./features/cover-letters/CoverLettersPage'));
 
 function PageLoader() {
   return (
@@ -61,6 +62,7 @@ export default function App() {
             <Route path="/jobs" element={<JobsListPage />} />
             <Route path="/jobs/new" element={<AddJobPage />} />
             <Route path="/jobs/:id" element={<JobDetailPage />} />
+            <Route path="/cover-letters" element={<CoverLettersPage />} />
             <Route path="/configurations" element={<ConfigurationsPage />} />
           </Route>
         </Route>

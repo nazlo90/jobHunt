@@ -59,6 +59,24 @@ export function useUserCvs() {
   });
 }
 
+export function useParseJobDescription() {
+  return useMutation({
+    mutationFn: (url: string) =>
+      http
+        .post<{ ok: boolean; jobDescription: string }>('/cvs/parse-jd', { url })
+        .then((r) => r.data.jobDescription),
+  });
+}
+
+export function useGenerateCoverLetter() {
+  return useMutation({
+    mutationFn: (payload: { userCvId: number; jobDescription: string }) =>
+      http
+        .post<{ ok: boolean; coverLetter: string }>('/cvs/cover-letter', payload)
+        .then((r) => r.data.coverLetter),
+  });
+}
+
 export function useDeleteUserCv() {
   const queryClient = useQueryClient();
   return useMutation({

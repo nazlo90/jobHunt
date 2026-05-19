@@ -72,6 +72,11 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'cover-letters',
+        loadComponent: () =>
+          import('./features/cover-letters/cover-letters.component').then((m) => m.CoverLettersComponent),
+      },
+      {
         path: 'configurations',
         loadComponent: () =>
           import('./features/configurations/configurations.component').then((m) => m.ConfigurationsComponent),

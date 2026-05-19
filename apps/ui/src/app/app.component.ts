@@ -54,6 +54,11 @@ import { AuthStore } from '@core/store/auth.store';
               <mat-icon matListItemIcon>list_alt</mat-icon>
               <span matListItemTitle>Jobs</span>
             </a>
+            <a mat-list-item routerLink="/cover-letters" routerLinkActive="nav-active" class="!rounded-lg !mb-0.5"
+               (click)="isMobile() && sidenav.close()">
+              <mat-icon matListItemIcon>description</mat-icon>
+              <span matListItemTitle>Cover Letters</span>
+            </a>
             <a mat-list-item routerLink="/configurations" routerLinkActive="nav-active" class="!rounded-lg !mb-0.5"
                (click)="isMobile() && sidenav.close()">
               <mat-icon matListItemIcon>tune</mat-icon>

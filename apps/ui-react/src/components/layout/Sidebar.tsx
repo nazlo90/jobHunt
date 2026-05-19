@@ -7,11 +7,13 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import WorkOutlinedIcon from '@mui/icons-material/WorkOutlined';
 import TuneIcon from '@mui/icons-material/Tune';
 import LogoutIcon from '@mui/icons-material/Logout';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { useAuthStore } from '../../core/stores/authStore';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Jobs', to: '/jobs', icon: <WorkOutlinedIcon /> },
+  { label: 'Cover Letters', to: '/cover-letters', icon: <DescriptionOutlinedIcon /> },
   { label: 'Configurations', to: '/configurations', icon: <TuneIcon /> },
 ];
 

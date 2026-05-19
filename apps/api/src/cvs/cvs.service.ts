@@ -13,6 +13,8 @@ import { UserCv } from '../database/entities/user-cv.entity';
 import { AdaptedCv } from '../database/entities/adapted-cv.entity';
 import { GenerateCvDto } from './dto/generate-cv.dto';
 
+const esmImport = new Function('p', 'return import(p)') as (p: string) => Promise<any>;
+
 @Injectable()
 export class CvsService {
   private readonly groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -172,6 +174,113 @@ Return a JSON object with exactly these fields:
   }
 
   // ── adapt ────────────────────────────────────────────────────────────────────
+
+  async parseJobDescription(url: string): Promise<{ jobDescription: string }> {
+    let html: string;
+    try {
+      const { default: fetch } = await esmImport('node-fetch');
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; JobHunt/1.0)' },
+        timeout: 15000,
+      });
+      if (!res.ok) {
+        throw new HttpException(`Failed to fetch URL: ${res.status}`, HttpStatus.BAD_GATEWAY);
+      }
+      html = await res.text();
+    } catch (err: any) {
+      if (err instanceof HttpException) throw err;
+      throw new HttpException(err?.message ?? 'Failed to fetch URL', HttpStatus.BAD_GATEWAY);
+    }
+
+    let pageText: string;
+    try {
+      const { load } = await esmImport('cheerio');
+      const $ = load(html);
+      $('script, style, nav, header, footer, [role="navigation"], [aria-label="navigation"]').remove();
+      pageText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 12000);
+    } catch {
+      pageText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 12000);
+    }
+
+    let jobDescription: string;
+    try {
+      const completion = await this.groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: 'Extract the job description from the webpage text. Return ONLY the job description content — role summary, responsibilities, requirements, and stack. Remove all navigation, ads, footer, and unrelated content. Return plain text, no markdown.',
+          },
+          { role: 'user', content: pageText },
+        ],
+        max_tokens: 2000,
+      });
+      jobDescription = (completion.choices[0].message.content ?? '').trim();
+    } catch (err: any) {
+      throw new HttpException(err?.message ?? 'Groq API error', HttpStatus.BAD_GATEWAY);
+    }
+
+    return { jobDescription };
+  }
+
+  async generateCoverLetter(
+    userCvId: number,
+    jobDescription: string,
+    userId: number,
+  ): Promise<{ coverLetter: string }> {
+    const userCv = await this.userCvsRepo.findOne({
+      where: { id: userCvId, userId },
+    });
+    if (!userCv) throw new NotFoundException(`CV ${userCvId} not found`);
+
+    const systemPrompt = `Act as an expert tech recruiter and professional resume writer. I will provide you with my CV and a Job Description (JD). Your task is to write a highly tailored, concise, and punchy Cover Letter that mimics the direct, professional, and slightly informal tone of a modern senior engineer.
+
+Follow these strict guidelines:
+
+1. STRUCTURE & FORMAT:
+- No formal corporate greetings or sign-offs (Do NOT use: "Dear Hiring Manager", "Sincerely", "Best regards", "I am writing to express my interest").
+- Start directly with a hook: "Hello, I'm [First Name] a [Role] with [X] years of experience...".
+- Use a short introductory paragraph highlighting cumulative experience and matching tech stack metrics.
+- Use a bulleted list titled exactly: "What aligns directly with your stack:" to match key JD requirements.
+- End with a brief, confident one-sentence closing statement about the strong fit and readiness for a call, without any parentheses or brackets. For example: "I think the fit here is strong, happy to walk through specific cases"
+- Keep the total length under 150-180 words.
+- IMPORTANT: Don't use long dashes "—", use short one instead "-"
+
+2. TONE & STYLE:
+- Tone: Direct, confident, peer-to-peer, conversational yet professional.
+- Write as if an engineer is talking to another engineer or a tech lead.
+- Avoid generic adjectives ("passionate", "motivated", "detail-oriented"). Focus purely on facts, skills, and hard metrics from the CV.
+
+3. CONTENT MATCHING:
+- Cross-reference the CV and JD. Extract the exact matching technologies and methodologies.
+- If the JD mentions specific pain points (e.g., migrations, refactoring, code quality, AI tools), explicitly highlight relevant achievements or metrics from the CV that prove capability in those areas.
+- For the bullet points, use a "Requirement from JD - My experience/approach" format, kept very short (e.g., "Vue 3 + Composition API - daily tools").
+- Dynamically adapt the introduction role title based on the JD. Instead of copying the exact title from the CV, blend the seniority level with the primary framework requested in the JD (e.g., if the CV says "Frontend Developer" but the JD seeks a senior Angular expert, use "Senior Angular Developer" or "Senior Frontend Engineer").
+
+Return ONLY the cover letter text, no extra explanation or markdown.`;
+
+    const userPrompt = `Here is my CV:\n${userCv.cvText}\n\nHere is the Job Description (JD):\n${jobDescription}`;
+
+    let raw: string;
+    try {
+      const completion = await this.groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: 1000,
+      });
+      raw = (completion.choices[0].message.content ?? '').trim();
+    } catch (err: any) {
+      throw new HttpException(
+        err?.message ?? 'Groq API error',
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
+
+    return { coverLetter: raw };
+  }
 
   async adapt(
     adaptedCvId: number,
