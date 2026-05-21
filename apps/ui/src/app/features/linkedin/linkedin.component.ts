@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -11,13 +12,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { LinkedInService } from '@core/services/linkedin.service';
 import { ToastService } from '@core/services/toast.service';
-import { CommentVariants, PostVariant, WRITE_CATEGORIES } from '@core/models/linkedin.model';
+import { CommentLanguage, CommentVariants, PostVariant, WRITE_CATEGORIES } from '@core/models/linkedin.model';
 
 @Component({
   selector: 'app-linkedin',
   imports: [
     FormsModule,
-    MatTabsModule, MatButtonModule, MatIconModule,
+    MatTabsModule, MatButtonModule, MatButtonToggleModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatChipsModule,
     MatProgressSpinnerModule, MatTooltipModule,
   ],
@@ -39,7 +40,7 @@ import { CommentVariants, PostVariant, WRITE_CATEGORIES } from '@core/models/lin
         <mat-tab label="Comments">
           <div class="py-5 max-w-2xl">
             <p class="text-sm text-slate-500 mb-5">
-              Paste a LinkedIn post to generate 5 comment variants — punchy, question, insight, experience, and challenge.
+              Paste a LinkedIn post to generate 8 comment variants — punchy, question, insight, experience, challenge, funny, meme, and roast.
             </p>
 
             <mat-form-field appearance="outline" class="w-full mb-3">
@@ -58,22 +59,28 @@ import { CommentVariants, PostVariant, WRITE_CATEGORIES } from '@core/models/lin
               </mat-form-field>
             </div>
 
-            <button
-              mat-flat-button
-              class="!bg-violet-600 !text-white mb-6"
-              [disabled]="commentsLoading() || !commentPostText.trim()"
-              (click)="generateComments()"
-            >
-              @if (commentsLoading()) {
-                <mat-spinner diameter="16" class="inline-spinner" />
-                <span class="ml-2">Generating…</span>
-              } @else {
-                <ng-container>
-                  <mat-icon>auto_awesome</mat-icon>
-                  Generate Comments
-                </ng-container>
-              }
-            </button>
+            <div class="flex items-center justify-between mb-5">
+              <mat-button-toggle-group [(ngModel)]="commentLanguage" hideSingleSelectionIndicator>
+                <mat-button-toggle value="en">EN</mat-button-toggle>
+                <mat-button-toggle value="uk">UK</mat-button-toggle>
+              </mat-button-toggle-group>
+
+              <button
+                mat-flat-button
+                class="!bg-violet-600 !text-white"
+                [disabled]="commentsLoading() || !commentPostText.trim()"
+                (click)="generateComments()"
+              >
+                @if (commentsLoading()) {
+                  <span class="flex items-center gap-2"><mat-spinner diameter="16" />Generating…</span>
+                } @else {
+                  <span class="flex items-center gap-2">
+                    <mat-icon>auto_awesome</mat-icon>
+                    Generate Comments
+                  </span>
+                }
+              </button>
+            </div>
 
             @if (comments()) {
               <div class="flex flex-col gap-4">
@@ -124,13 +131,12 @@ import { CommentVariants, PostVariant, WRITE_CATEGORIES } from '@core/models/lin
               (click)="generatePost()"
             >
               @if (writeLoading()) {
-                <mat-spinner diameter="16" class="inline-spinner" />
-                <span class="ml-2">Generating…</span>
+                <span class="flex items-center gap-2"><mat-spinner diameter="16" />Generating…</span>
               } @else {
-                <ng-container>
+                <span class="flex items-center gap-2">
                   <mat-icon>edit_note</mat-icon>
                   Generate Posts
-                </ng-container>
+                </span>
               }
             </button>
 
@@ -193,13 +199,12 @@ import { CommentVariants, PostVariant, WRITE_CATEGORIES } from '@core/models/lin
               (click)="generateDM()"
             >
               @if (dmLoading()) {
-                <mat-spinner diameter="16" class="inline-spinner" />
-                <span class="ml-2">Generating…</span>
+                <span class="flex items-center gap-2"><mat-spinner diameter="16" />Generating…</span>
               } @else {
-                <ng-container>
+                <span class="flex items-center gap-2">
                   <mat-icon>send</mat-icon>
                   Generate DM
-                </ng-container>
+                </span>
               }
             </button>
 
@@ -246,6 +251,7 @@ export class LinkedInComponent {
   commentPostText = '';
   commentAuthorName = '';
   commentAuthorTitle = '';
+  commentLanguage: CommentLanguage = 'en';
   readonly comments = signal<CommentVariants | null>(null);
   readonly commentsLoading = signal(false);
 
@@ -253,11 +259,14 @@ export class LinkedInComponent {
     const c = this.comments();
     if (!c) return [];
     return [
-      { label: 'Punchy', text: c.punchy },
-      { label: 'Question', text: c.question },
-      { label: 'Insight', text: c.insight },
+      { label: 'Punchy',     text: c.punchy },
+      { label: 'Question',   text: c.question },
+      { label: 'Insight',    text: c.insight },
       { label: 'Experience', text: c.experience },
-      { label: 'Challenge', text: c.challenge },
+      { label: 'Challenge',  text: c.challenge },
+      { label: 'Funny',      text: c.funny },
+      { label: 'Meme',       text: c.meme },
+      { label: 'Roast',      text: c.roast },
     ];
   };
 
@@ -278,7 +287,7 @@ export class LinkedInComponent {
   generateComments(): void {
     this.commentsLoading.set(true);
     this.svc
-      .generateComment(this.commentPostText, this.commentAuthorName, this.commentAuthorTitle)
+      .generateComment(this.commentPostText, this.commentAuthorName, this.commentAuthorTitle, this.commentLanguage)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ comments }) => {

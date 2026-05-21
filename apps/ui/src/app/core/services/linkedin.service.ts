@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { CommentVariants, PostVariant } from '../models/linkedin.model';
+import { CommentLanguage, CommentVariants, PostVariant } from '../models/linkedin.model';
 
 @Injectable({ providedIn: 'root' })
 export class LinkedInService {
@@ -13,11 +13,13 @@ export class LinkedInService {
     postText: string,
     authorName: string,
     authorTitle: string,
+    language: CommentLanguage = 'en',
   ): Observable<{ ok: boolean; comments: CommentVariants }> {
     return this.http.post<{ ok: boolean; comments: CommentVariants }>(`${this.base}/comment`, {
       postText,
       authorName,
       authorTitle,
+      language,
     });
   }
 

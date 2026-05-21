@@ -13,10 +13,17 @@ Rules for all comments:
 - No hollow affirmations
 - Keep every variant to 1-2 sentences max`;
 
-export async function generateComments(post) {
+const LANGUAGE_INSTRUCTION = {
+  en: 'Write all comments in English.',
+  uk: 'Write all comments in Ukrainian language (українською мовою).',
+};
+
+export async function generateComments(post, language = 'en') {
   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-  const userPrompt = `Generate 5 short comment variants for this LinkedIn post. Return ONLY valid JSON.
-Detect the language of the post and write all comments in that same language.
+  const langInstruction = LANGUAGE_INSTRUCTION[language] ?? LANGUAGE_INSTRUCTION.en;
+
+  const userPrompt = `Generate 8 short comment variants for this LinkedIn post. Return ONLY valid JSON.
+${langInstruction}
 
 Post by ${post.authorName} (${post.authorTitle}):
 "${post.postText}"
@@ -27,7 +34,10 @@ Return this exact JSON structure (each value must be 1-2 sentences):
   "question": "one concise question that sparks real discussion",
   "insight": "1-2 sentences adding a specific technical or professional insight",
   "experience": "1-2 sentences referencing a relevant personal experience",
-  "challenge": "1-2 sentences respectfully pushing back or adding a nuanced counterpoint"
+  "challenge": "1-2 sentences respectfully pushing back or adding a nuanced counterpoint",
+  "funny": "genuinely funny comment — witty wordplay or absurd observation about the topic, not cringe",
+  "meme": "comment written in meme/internet culture language: ironic, self-aware, references dev memes or LinkedIn culture (e.g. 'me at 2am debugging this', 'this hits different after 5 sprints', '10x engineer energy', 'the audacity of this post')",
+  "roast": "a sharp, clever roast of the post's premise or the LinkedIn-ification of the idea — dry wit, no personal attacks, the kind of comment that gets 'lmaooo true' replies"
 }`;
 
   const completion = await groq.chat.completions.create({

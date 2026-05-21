@@ -7,6 +7,9 @@ export interface CommentVariants {
   insight: string;
   experience: string;
   challenge: string;
+  funny: string;
+  meme: string;
+  roast: string;
 }
 
 export interface PostVariant {
@@ -25,9 +28,12 @@ export class LinkedInService {
     return process.env['LINKEDIN_SRC_PATH'] ?? path.resolve(__dirname, '../../../../src');
   }
 
-  async generateComments(post: { postText: string; authorName: string; authorTitle: string }): Promise<CommentVariants> {
+  async generateComments(
+    post: { postText: string; authorName: string; authorTitle: string },
+    language: 'en' | 'uk' = 'en',
+  ): Promise<CommentVariants> {
     const { generateComments } = await esmImport(`${this.srcBase}/ai/commentGenerator.js`);
-    return generateComments(post) as Promise<CommentVariants>;
+    return generateComments(post, language) as Promise<CommentVariants>;
   }
 
   async generatePosts(category: string, seedIdea: string): Promise<PostVariant[]> {

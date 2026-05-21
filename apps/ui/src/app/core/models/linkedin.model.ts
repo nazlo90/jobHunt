@@ -4,7 +4,12 @@ export interface CommentVariants {
   insight: string;
   experience: string;
   challenge: string;
+  funny: string;
+  meme: string;
+  roast: string;
 }
+
+export type CommentLanguage = 'en' | 'uk';
 
 export interface PostVariant {
   variant: number;

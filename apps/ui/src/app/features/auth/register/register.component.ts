@@ -32,8 +32,7 @@ function passwordMatchValidator(ctrl: AbstractControl): ValidationErrors | null 
         <h1>Create account</h1>
 
         <a mat-stroked-button class="google-btn" [href]="googleUrl">
-          <mat-icon>open_in_new</mat-icon>
-          Sign up with Google
+          <span class="flex items-center gap-2"><mat-icon>open_in_new</mat-icon>Sign up with Google</span>
         </a>
 
         <div class="divider"><span>or</span></div>

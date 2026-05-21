@@ -33,9 +33,20 @@ async function runPosts() {
   });
 }
 
-async function runComment(id) {
+const COMMENT_LABELS = {
+  punchy:     '── PUNCHY ────────────────────────────────────',
+  question:   '── QUESTION ──────────────────────────────────',
+  insight:    '── INSIGHT ───────────────────────────────────',
+  experience: '── EXPERIENCE ────────────────────────────────',
+  challenge:  '── CHALLENGE ─────────────────────────────────',
+  funny:      '── FUNNY ─────────────────────────────────────',
+  meme:       '── MEME ──────────────────────────────────────',
+  roast:      '── ROAST ─────────────────────────────────────',
+};
+
+async function runComment(id, language = 'en') {
   if (!id) {
-    console.error('Usage: node src/index.js comment <postId>');
+    console.error('Usage: node src/index.js comment <postId> [uk]');
     process.exit(1);
   }
 
@@ -52,18 +63,17 @@ async function runComment(id) {
     process.exit(1);
   }
 
-  console.log(`Generating comments for post by ${post.authorName}...\n`);
-  const comments = await generateComments(post);
+  const lang = language === 'uk' ? 'uk' : 'en';
+  console.log(`Generating comments for post by ${post.authorName} [${lang.toUpperCase()}]...\n`);
+  const comments = await generateComments(post, lang);
 
-  console.log('── SHORT ─────────────────────────────────────');
-  console.log(comments.short);
-  console.log();
-  console.log('── MEDIUM ────────────────────────────────────');
-  console.log(comments.medium);
-  console.log();
-  console.log('── OPINIONATED ───────────────────────────────');
-  console.log(comments.opinionated);
-  console.log();
+  for (const [key, label] of Object.entries(COMMENT_LABELS)) {
+    if (comments[key]) {
+      console.log(label);
+      console.log(comments[key]);
+      console.log();
+    }
+  }
 }
 
 async function runWrite(category) {
@@ -112,7 +122,7 @@ function printHelp() {
 
 Commands:
   node src/index.js posts                   Scrape and rank LinkedIn posts
-  node src/index.js comment <postId>        Generate 3 comment variants for a post
+  node src/index.js comment <postId> [uk]   Generate 8 comment variants (lang: en default, uk for Ukrainian)
   node src/index.js write <category>        Generate 2 LinkedIn post drafts
   node src/index.js dm                      Interactive DM generator
 
@@ -125,7 +135,7 @@ Requires: GROQ_API_KEY env variable`);
 try {
   switch (command) {
     case 'posts':   await runPosts(); break;
-    case 'comment': await runComment(args[0]); break;
+    case 'comment': await runComment(args[0], args[1]); break;
     case 'write':   await runWrite(args[0]); break;
     case 'dm':      await runDm(); break;
     default:        printHelp(); break;

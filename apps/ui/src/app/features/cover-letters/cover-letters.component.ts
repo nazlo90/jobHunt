@@ -98,11 +98,10 @@ const STORAGE_KEY = 'cover_letter_selected_cv';
           class="self-start"
         >
           @if (loading()) {
-            <mat-spinner diameter="18" class="inline-spinner mr-1" />
+            <span class="flex items-center gap-2"><mat-spinner diameter="18" class="inline-spinner" />Generating...</span>
           } @else {
-            <mat-icon class="mr-1">auto_awesome</mat-icon>
+            <span class="flex items-center gap-2"><mat-icon>auto_awesome</mat-icon>Generate Cover Letter</span>
           }
-          {{ loading() ? 'Generating...' : 'Generate Cover Letter' }}
         </button>
       </div>
 

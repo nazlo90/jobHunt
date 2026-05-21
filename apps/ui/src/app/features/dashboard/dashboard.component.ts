@@ -133,7 +133,7 @@ import { ScraperProfile } from '@core/models/scraper-profile.model';
                   </button>
                 }
                 <a mat-stroked-button routerLink="/jobs/new">
-                  <mat-icon>add</mat-icon> Add Job Manually
+                  <span class="flex items-center gap-1.5"><mat-icon>add</mat-icon>Add Job Manually</span>
                 </a>
               </div>
             </mat-card-content>

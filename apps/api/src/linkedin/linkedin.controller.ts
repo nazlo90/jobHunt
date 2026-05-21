@@ -8,14 +8,17 @@ export class LinkedInController {
   @Post('comment')
   @HttpCode(HttpStatus.OK)
   async generateComment(
-    @Body() body: { postText: string; authorName?: string; authorTitle?: string },
+    @Body() body: { postText: string; authorName?: string; authorTitle?: string; language?: 'en' | 'uk' },
   ) {
     try {
-      const comments = await this.linkedInService.generateComments({
-        postText: body.postText,
-        authorName: body.authorName ?? '',
-        authorTitle: body.authorTitle ?? '',
-      });
+      const comments = await this.linkedInService.generateComments(
+        {
+          postText: body.postText,
+          authorName: body.authorName ?? '',
+          authorTitle: body.authorTitle ?? '',
+        },
+        body.language ?? 'en',
+      );
       return { ok: true, comments };
     } catch (e: any) {
       return { ok: false, error: e?.message, stack: e?.stack?.split('\n').slice(0, 5) };
