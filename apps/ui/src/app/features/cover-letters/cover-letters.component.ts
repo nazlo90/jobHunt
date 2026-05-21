@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { CvService } from '@core/services/cv.service';
 import { UserCvService } from '@core/services/user-cv.service';
 import { ToastService } from '@core/services/toast.service';
@@ -22,6 +23,7 @@ const STORAGE_KEY = 'cover_letter_selected_cv';
     FormsModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule,
+    MatButtonToggleModule,
   ],
   template: `
     <div class="max-w-2xl">
@@ -66,6 +68,15 @@ const STORAGE_KEY = 'cover_letter_selected_cv';
             }
           </mat-select>
         </mat-form-field>
+
+        <!-- Language -->
+        <div class="flex items-center gap-3">
+          <span class="text-sm text-slate-500">Language:</span>
+          <mat-button-toggle-group [(ngModel)]="language" [hideSingleSelectionIndicator]="true">
+            <mat-button-toggle value="en">EN</mat-button-toggle>
+            <mat-button-toggle value="uk">UA</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
 
         <!-- Job Description — optional, auto-filled from URL -->
         <mat-form-field appearance="outline" class="w-full">
@@ -135,6 +146,7 @@ export class CoverLettersComponent implements OnInit, OnDestroy {
   jobUrl = '';
   jobDescription = '';
   selectedCvId: number | null = null;
+  language: 'en' | 'uk' = 'en';
 
   private readonly urlSubject = new Subject<string>();
   private copyTimeout?: ReturnType<typeof setTimeout>;
@@ -200,7 +212,7 @@ export class CoverLettersComponent implements OnInit, OnDestroy {
   generate() {
     if (!this.canGenerate() || this.selectedCvId === null) return;
     this.loading.set(true);
-    this.cvService.generateCoverLetter(this.selectedCvId, this.jobDescription.trim())
+    this.cvService.generateCoverLetter(this.selectedCvId, this.jobDescription.trim(), this.language)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ coverLetter }) => {

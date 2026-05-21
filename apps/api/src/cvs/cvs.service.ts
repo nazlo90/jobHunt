@@ -227,13 +227,21 @@ Return a JSON object with exactly these fields:
     userCvId: number,
     jobDescription: string,
     userId: number,
+    language: 'en' | 'uk' = 'en',
   ): Promise<{ coverLetter: string }> {
     const userCv = await this.userCvsRepo.findOne({
       where: { id: userCvId, userId },
     });
     if (!userCv) throw new NotFoundException(`CV ${userCvId} not found`);
 
+    const languageInstruction =
+      language === 'uk'
+        ? 'Write the entire cover letter in Ukrainian language.'
+        : 'Write the cover letter in English.';
+
     const systemPrompt = `Act as an expert tech recruiter and professional resume writer. I will provide you with my CV and a Job Description (JD). Your task is to write a highly tailored, concise, and punchy Cover Letter that mimics the direct, professional, and slightly informal tone of a modern senior engineer.
+
+${languageInstruction}
 
 Follow these strict guidelines:
 
@@ -245,6 +253,7 @@ Follow these strict guidelines:
 - End with a brief, confident one-sentence closing statement about the strong fit and readiness for a call, without any parentheses or brackets. For example: "I think the fit here is strong, happy to walk through specific cases"
 - Keep the total length under 150-180 words.
 - IMPORTANT: Don't use long dashes "—", use short one instead "-"
+- IMPORTANT: Use only "-" (hyphen) for bullet points. Do NOT use "*" (asterisk) for any bullets or lists.
 
 2. TONE & STYLE:
 - Tone: Direct, confident, peer-to-peer, conversational yet professional.

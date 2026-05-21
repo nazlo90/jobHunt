@@ -46,6 +46,7 @@ export class CvsController {
       dto.userCvId,
       dto.jobDescription,
       user.id,
+      dto.language,
     );
     return { ok: true, coverLetter: result.coverLetter };
   }

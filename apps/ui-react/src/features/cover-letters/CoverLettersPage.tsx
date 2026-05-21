@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, TextField, Button, MenuItem, Select, FormControl,
   InputLabel, Paper, CircularProgress, IconButton, Tooltip, Divider,
-  InputAdornment,
+  InputAdornment, ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
@@ -22,6 +22,7 @@ export default function CoverLettersPage() {
   const [jobUrl, setJobUrl] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [selectedCvId, setSelectedCvId] = useState<number | ''>('');
+  const [language, setLanguage] = useState<'en' | 'uk'>('en');
   const [coverLetter, setCoverLetter] = useState('');
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout>>();
@@ -57,6 +58,7 @@ export default function CoverLettersPage() {
     const result = await generateMutation.mutateAsync({
       userCvId: selectedCvId as number,
       jobDescription: jobDescription.trim(),
+      language,
     });
     setCoverLetter(result);
   };
@@ -131,6 +133,20 @@ export default function CoverLettersPage() {
             ))}
           </Select>
         </FormControl>
+
+        {/* Language */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Typography variant="body2" color="text.secondary">Language:</Typography>
+          <ToggleButtonGroup
+            value={language}
+            exclusive
+            onChange={(_, val) => { if (val) setLanguage(val); }}
+            size="small"
+          >
+            <ToggleButton value="en">EN</ToggleButton>
+            <ToggleButton value="uk">UA</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
 
         {/* Job Description — optional, auto-filled from URL */}
         <TextField

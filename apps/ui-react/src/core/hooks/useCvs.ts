@@ -70,7 +70,7 @@ export function useParseJobDescription() {
 
 export function useGenerateCoverLetter() {
   return useMutation({
-    mutationFn: (payload: { userCvId: number; jobDescription: string }) =>
+    mutationFn: (payload: { userCvId: number; jobDescription: string; language?: 'en' | 'uk' }) =>
       http
         .post<{ ok: boolean; coverLetter: string }>('/cvs/cover-letter', payload)
         .then((r) => r.data.coverLetter),

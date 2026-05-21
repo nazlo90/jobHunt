@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class GenerateCvDto {
@@ -23,4 +23,8 @@ export class GenerateCvDto {
   @IsOptional()
   @IsString()
   role?: string;
+
+  @IsOptional()
+  @IsIn(['en', 'uk'])
+  language?: 'en' | 'uk';
 }
