@@ -226,9 +226,26 @@ export class CoverLettersComponent implements OnInit, OnDestroy {
   }
 
   copy() {
-    navigator.clipboard.writeText(this.coverLetter());
+    const text = this.coverLetter();
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => this.copyLegacy(text));
+    } else {
+      this.copyLegacy(text);
+    }
     this.copied.set(true);
     clearTimeout(this.copyTimeout);
     this.copyTimeout = setTimeout(() => this.copied.set(false), 2000);
+  }
+
+  private copyLegacy(text: string) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
   }
 }
