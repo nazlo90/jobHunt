@@ -97,6 +97,7 @@ apps/api/public/browser/
 apps/api/tsconfig.build.tsbuildinfo
 
 # Dynamic data (SQLite DB — ignore binary data files, not the directory)
+db
 db/*.db
 db/*.db-shm
 db/*.db-wal

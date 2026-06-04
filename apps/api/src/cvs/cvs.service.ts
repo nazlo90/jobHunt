@@ -13,7 +13,9 @@ import { UserCv } from '../database/entities/user-cv.entity';
 import { AdaptedCv } from '../database/entities/adapted-cv.entity';
 import { GenerateCvDto } from './dto/generate-cv.dto';
 
-const esmImport = new Function('p', 'return import(p)') as (p: string) => Promise<any>;
+const esmImport = new Function('p', 'return import(p)') as (
+  p: string,
+) => Promise<any>;
 
 @Injectable()
 export class CvsService {
@@ -184,22 +186,34 @@ Return a JSON object with exactly these fields:
         timeout: 15000,
       });
       if (!res.ok) {
-        throw new HttpException(`Failed to fetch URL: ${res.status}`, HttpStatus.BAD_GATEWAY);
+        throw new HttpException(
+          `Failed to fetch URL: ${res.status}`,
+          HttpStatus.BAD_GATEWAY,
+        );
       }
       html = await res.text();
     } catch (err: any) {
       if (err instanceof HttpException) throw err;
-      throw new HttpException(err?.message ?? 'Failed to fetch URL', HttpStatus.BAD_GATEWAY);
+      throw new HttpException(
+        err?.message ?? 'Failed to fetch URL',
+        HttpStatus.BAD_GATEWAY,
+      );
     }
 
     let pageText: string;
     try {
       const { load } = await esmImport('cheerio');
       const $ = load(html);
-      $('script, style, nav, header, footer, [role="navigation"], [aria-label="navigation"]').remove();
+      $(
+        'script, style, nav, header, footer, [role="navigation"], [aria-label="navigation"]',
+      ).remove();
       pageText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 12000);
     } catch {
-      pageText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 12000);
+      pageText = html
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 12000);
     }
 
     let jobDescription: string;
@@ -209,7 +223,8 @@ Return a JSON object with exactly these fields:
         messages: [
           {
             role: 'system',
-            content: 'Extract the job description from the webpage text. Return ONLY the job description content — role summary, responsibilities, requirements, and stack. Remove all navigation, ads, footer, and unrelated content. Return plain text, no markdown.',
+            content:
+              'Extract the job description from the webpage text. Return ONLY the job description content — role summary, responsibilities, requirements, and stack. Remove all navigation, ads, footer, and unrelated content. Return plain text, no markdown.',
           },
           { role: 'user', content: pageText },
         ],
@@ -217,7 +232,10 @@ Return a JSON object with exactly these fields:
       });
       jobDescription = (completion.choices[0].message.content ?? '').trim();
     } catch (err: any) {
-      throw new HttpException(err?.message ?? 'Groq API error', HttpStatus.BAD_GATEWAY);
+      throw new HttpException(
+        err?.message ?? 'Groq API error',
+        HttpStatus.BAD_GATEWAY,
+      );
     }
 
     return { jobDescription };
@@ -247,7 +265,7 @@ Follow these strict guidelines:
 
 1. STRUCTURE & FORMAT:
 - No formal corporate greetings or sign-offs (Do NOT use: "Dear Hiring Manager", "Sincerely", "Best regards", "I am writing to express my interest").
-- Start directly with a hook: "Hello, I'm [First Name] a [Role] with [X] years of experience...".
+- Start directly with a hook that introduces who you are and your primary expertise: Hello, I'm [First Name] a [RoleFromVacancy]. do NOT mention years of experience in the opening line. Lead with what you bring to the role, not your title or tenure.
 - Use a short introductory paragraph highlighting cumulative experience and matching tech stack metrics.
 - Use a bulleted list titled exactly: "What aligns directly with your stack:" to match key JD requirements.
 - End with a brief, confident one-sentence closing statement about the strong fit and readiness for a call, without any parentheses or brackets. For example: "I think the fit here is strong, happy to walk through specific cases"
