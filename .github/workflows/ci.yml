@@ -124,11 +124,17 @@ jobs:
             mv .env.tmp .env
             chmod 600 .env   # readable only by the deploy user
 
-            # ── Force-remove any container holding port 3000, then rebuild and start ──
-            sudo docker ps -q --filter "publish=3000" | xargs -r sudo docker rm -f
-            # Clear build cache from any earlier interrupted/timed-out build before retrying
+            # ── Clear build cache from any earlier interrupted/timed-out build before retrying ──
             sudo docker builder prune -f
-            sudo docker compose -p jobhunt up -d --build --remove-orphans
+
+            # ── Build the new image WITHOUT touching the running container first ──
+            # If the build fails or hangs, the site stays up on the old image instead
+            # of going down mid-deploy.
+            sudo docker compose -p jobhunt build
+
+            # ── Only now swap the running container for the newly-built image ──
+            sudo docker ps -q --filter "publish=3000" | xargs -r sudo docker rm -f
+            sudo docker compose -p jobhunt up -d --remove-orphans
 
             # ── Clean up dangling images to save disk space ──
             sudo docker image prune -f
