@@ -126,6 +126,8 @@ jobs:
 
             # ── Force-remove any container holding port 3000, then rebuild and start ──
             sudo docker ps -q --filter "publish=3000" | xargs -r sudo docker rm -f
+            # Clear build cache from any earlier interrupted/timed-out build before retrying
+            sudo docker builder prune -f
             sudo docker compose -p jobhunt up -d --build --remove-orphans
 
             # ── Clean up dangling images to save disk space ──

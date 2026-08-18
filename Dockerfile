@@ -17,6 +17,12 @@ FROM node:22-alpine AS api-build
 RUN apk add --no-cache python3 make g++
 
 WORKDIR /build/apps/api
+
+# Force this stage to wait for ui-build to fully finish before starting its own
+# npm ci — otherwise BuildKit runs both npm ci calls concurrently, which is enough
+# to exhaust RAM and hang the build on the small production VPS.
+COPY --from=ui-build /build/apps/ui/package.json /tmp/.ui-build-done
+
 COPY apps/api/package*.json ./
 RUN npm ci
 
