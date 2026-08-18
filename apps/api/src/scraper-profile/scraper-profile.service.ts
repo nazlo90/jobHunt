@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Groq from 'groq-sdk';
 import { jsonrepair } from 'jsonrepair';
+import { GROQ_MODEL } from '../ai.constants';
 import { ScraperProfile } from './scraper-profile.entity';
 import { CreateScraperProfileDto } from './create-scraper-profile.dto';
 import { UpdateScraperProfileDto } from './update-scraper-profile.dto';
@@ -117,7 +118,7 @@ export class ScraperProfileService {
     }
 
     const completion = await this.groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_MODEL,
       max_tokens: 1024,
       response_format: { type: 'json_object' },
       messages: [{

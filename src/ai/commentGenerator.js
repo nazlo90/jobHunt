@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import { MY_PROFILE } from '../config/profile.js';
+import { GROQ_MODEL } from '../config/ai.js';
 
 const SYSTEM_PROMPT = `You are ${MY_PROFILE.name}, ${MY_PROFILE.title}.
 Skills: ${MY_PROFILE.skills.join(', ')}.
@@ -41,7 +42,7 @@ Return this exact JSON structure (each value must be 1-2 sentences):
 }`;
 
   const completion = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: GROQ_MODEL,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },

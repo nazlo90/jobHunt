@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Groq from 'groq-sdk';
 import { jsonrepair } from 'jsonrepair';
+import { GROQ_MODEL } from '../ai.constants';
 import { Job } from '../database/entities/job.entity';
 import { UserCv } from '../database/entities/user-cv.entity';
 import { AdaptedCv } from '../database/entities/adapted-cv.entity';
@@ -77,7 +78,7 @@ Return a JSON object with exactly these fields:
     let raw: string;
     try {
       const completion = await this.groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
@@ -219,7 +220,7 @@ Return a JSON object with exactly these fields:
     let jobDescription: string;
     try {
       const completion = await this.groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_MODEL,
         messages: [
           {
             role: 'system',
@@ -291,7 +292,7 @@ Return ONLY the cover letter text, no extra explanation or markdown.`;
     let raw: string;
     try {
       const completion = await this.groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
@@ -416,7 +417,7 @@ ${userCv.cvText}`;
     let raw: string;
     try {
       const completion = await this.groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: GROQ_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },

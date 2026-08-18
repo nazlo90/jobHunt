@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import * as cheerio from 'cheerio';
 import Groq from 'groq-sdk';
 import { jsonrepair } from 'jsonrepair';
+import { GROQ_MODEL } from '../ai.constants';
 import { Job } from '../database/entities/job.entity';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
@@ -174,7 +175,7 @@ export class JobsService {
     const text = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 10000);
 
     const completion = await this.groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model: GROQ_MODEL,
       messages: [
         {
           role: 'system',

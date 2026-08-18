@@ -1,6 +1,7 @@
 // src/ai/postGenerator.js
 import Groq from 'groq-sdk';
 import { MY_PROFILE } from '../config/profile.js';
+import { GROQ_MODEL } from '../config/ai.js';
 
 const VALID_CATEGORIES = ['angular-tip', 'career-lesson', 'ai-in-dev', 'leadership', 'hot-take'];
 
@@ -46,7 +47,7 @@ Return ONLY valid JSON:
 Each variant must be 150-300 words, have a strong opening line, and feel like a distinct take.`;
 
   const completion = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: GROQ_MODEL,
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
