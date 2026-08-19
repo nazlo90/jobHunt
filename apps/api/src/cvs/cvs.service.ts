@@ -8,7 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Groq from 'groq-sdk';
 import { jsonrepair } from 'jsonrepair';
-import { GROQ_MODEL } from '../ai.constants';
+import {
+  GROQ_MODEL,
+  GROQ_REASONING_EFFORT,
+  GROQ_REASONING_FORMAT,
+} from '../ai.constants';
 import { Job } from '../database/entities/job.entity';
 import { UserCv } from '../database/entities/user-cv.entity';
 import { AdaptedCv } from '../database/entities/adapted-cv.entity';
@@ -83,7 +87,9 @@ Return a JSON object with exactly these fields:
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        max_tokens: 4000,
+        max_completion_tokens: 6000,
+        reasoning_effort: GROQ_REASONING_EFFORT,
+        reasoning_format: GROQ_REASONING_FORMAT,
       });
       raw = (completion.choices[0].message.content ?? '')
         .trim()
@@ -229,7 +235,9 @@ Return a JSON object with exactly these fields:
           },
           { role: 'user', content: pageText },
         ],
-        max_tokens: 2000,
+        max_completion_tokens: 3000,
+        reasoning_effort: GROQ_REASONING_EFFORT,
+        reasoning_format: GROQ_REASONING_FORMAT,
       });
       jobDescription = (completion.choices[0].message.content ?? '').trim();
     } catch (err: any) {
@@ -297,7 +305,9 @@ Return ONLY the cover letter text, no extra explanation or markdown.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        max_tokens: 1000,
+        max_completion_tokens: 2000,
+        reasoning_effort: GROQ_REASONING_EFFORT,
+        reasoning_format: GROQ_REASONING_FORMAT,
       });
       raw = (completion.choices[0].message.content ?? '').trim();
     } catch (err: any) {
@@ -422,7 +432,9 @@ ${userCv.cvText}`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        max_tokens: 4000,
+        max_completion_tokens: 6000,
+        reasoning_effort: GROQ_REASONING_EFFORT,
+        reasoning_format: GROQ_REASONING_FORMAT,
       });
       raw = (completion.choices[0].message.content ?? '')
         .trim()

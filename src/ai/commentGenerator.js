@@ -1,6 +1,6 @@
 import Groq from 'groq-sdk';
 import { MY_PROFILE } from '../config/profile.js';
-import { GROQ_MODEL } from '../config/ai.js';
+import { GROQ_MODEL, GROQ_REASONING_EFFORT, GROQ_REASONING_FORMAT } from '../config/ai.js';
 
 const SYSTEM_PROMPT = `You are ${MY_PROFILE.name}, ${MY_PROFILE.title}.
 Skills: ${MY_PROFILE.skills.join(', ')}.
@@ -47,7 +47,9 @@ Return this exact JSON structure (each value must be 1-2 sentences):
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
     ],
-    max_tokens: 800,
+    max_completion_tokens: 1500,
+    reasoning_effort: GROQ_REASONING_EFFORT,
+    reasoning_format: GROQ_REASONING_FORMAT,
     response_format: { type: 'json_object' },
   });
 

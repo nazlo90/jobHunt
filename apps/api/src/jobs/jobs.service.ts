@@ -4,7 +4,11 @@ import { Repository } from 'typeorm';
 import * as cheerio from 'cheerio';
 import Groq from 'groq-sdk';
 import { jsonrepair } from 'jsonrepair';
-import { GROQ_MODEL } from '../ai.constants';
+import {
+  GROQ_MODEL,
+  GROQ_REASONING_EFFORT,
+  GROQ_REASONING_FORMAT,
+} from '../ai.constants';
 import { Job } from '../database/entities/job.entity';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
@@ -199,7 +203,9 @@ Return ONLY a JSON object, no markdown, no explanation.`,
         },
       ],
       temperature: 0.1,
-      max_tokens: 600,
+      max_completion_tokens: 1500,
+      reasoning_effort: GROQ_REASONING_EFFORT,
+      reasoning_format: GROQ_REASONING_FORMAT,
     });
 
     const raw = completion.choices[0]?.message?.content ?? '{}';

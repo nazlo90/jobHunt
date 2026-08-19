@@ -3,7 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Groq from 'groq-sdk';
 import { jsonrepair } from 'jsonrepair';
-import { GROQ_MODEL } from '../ai.constants';
+import {
+  GROQ_MODEL,
+  GROQ_REASONING_EFFORT,
+  GROQ_REASONING_FORMAT,
+} from '../ai.constants';
 import { ScraperProfile } from './scraper-profile.entity';
 import { CreateScraperProfileDto } from './create-scraper-profile.dto';
 import { UpdateScraperProfileDto } from './update-scraper-profile.dto';
@@ -119,7 +123,9 @@ export class ScraperProfileService {
 
     const completion = await this.groq.chat.completions.create({
       model: GROQ_MODEL,
-      max_tokens: 1024,
+      max_completion_tokens: 2000,
+      reasoning_effort: GROQ_REASONING_EFFORT,
+      reasoning_format: GROQ_REASONING_FORMAT,
       response_format: { type: 'json_object' },
       messages: [{
         role: 'user',

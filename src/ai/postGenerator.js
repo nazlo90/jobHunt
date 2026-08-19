@@ -1,7 +1,7 @@
 // src/ai/postGenerator.js
 import Groq from 'groq-sdk';
 import { MY_PROFILE } from '../config/profile.js';
-import { GROQ_MODEL } from '../config/ai.js';
+import { GROQ_MODEL, GROQ_REASONING_EFFORT, GROQ_REASONING_FORMAT } from '../config/ai.js';
 
 const VALID_CATEGORIES = ['angular-tip', 'career-lesson', 'ai-in-dev', 'leadership', 'hot-take'];
 
@@ -52,7 +52,9 @@ Each variant must be 150-300 words, have a strong opening line, and feel like a 
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
     ],
-    max_tokens: 2048,
+    max_completion_tokens: 3500,
+    reasoning_effort: GROQ_REASONING_EFFORT,
+    reasoning_format: GROQ_REASONING_FORMAT,
     response_format: { type: 'json_object' },
   });
 
